@@ -171,7 +171,7 @@ services:
     container_name: traefik-log-dashboard-agent
     depends_on:
       - geoipupdate
-    image: hhftechnology/traefik-log-dashboard-agent:2.5.0@sha256:c3831df468a202b68418d04bc08f55456c7eba4eba596795e5dcbb6d8b3a5586
+    image: hhftechnology/traefik-log-dashboard-agent:3.0.0@sha256:aa75766b9235bf9d8d28f4dd3b1e0902ce589b10386221d43e7eab6f19ce7e57
     restart: unless-stopped
 
     # Network

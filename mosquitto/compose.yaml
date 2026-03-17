@@ -1,0 +1,29 @@
+services:
+  mosquitto:
+    container_name: mosquitto
+    environment:
+      - HOST_CONTAINERNAME=mosquitto
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - RUN_INSECURE_MQTT_SERVER=2
+      - TZ=Europe/Berlin
+      - UMASK=022
+    image: ghcr.io/imagegenius/mosquitto:2.0.18-r0-ig19@sha256:d9a32b7bf84380ee7cff5f7d16b70bbb51d453496d317df19e6e48fd45dd5352
+    labels:
+      - com.smoochy.komodo.restore_stack=mosquitto
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/imagegenius/templates/main/unraid/img/mosquitto.png
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "1883:1883/tcp"
+      - "8883:8883/tcp"
+      - "9001:9001/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/mosquitto:/config:rw
+networks:
+  smoonet:
+    external: true

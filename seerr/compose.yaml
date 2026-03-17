@@ -1,0 +1,61 @@
+services:
+  seerr:
+    container_name: seerr
+    environment:
+      - HOST_CONTAINERNAME=seerr
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LOG_LEVEL=info
+      - PORT=5055 #optional
+      - TZ=Europe/Berlin
+    image: ghcr.io/seerr-team/seerr:v3.1.0@sha256:b35ba0461c4a1033d117ac1e5968fd4cbe777899e4cbfbdeaf3d10a42a0eb7e9
+    init: true
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=seerr
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jellyseerr.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+    # Network config
+    healthcheck:
+      interval: 15s
+      retries: 3
+      start_period: 20s
+      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
+      timeout: 3s
+    networks:
+      - smoonet
+    ports:
+      - 5055:5055
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/seerr/config:/app/config
+networks:
+  smoonet:
+    external: true
+    name: smoonet

@@ -1,0 +1,93 @@
+services:
+  browserless-v2:
+    container_name: browserless-v2
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - CONCURRENT=10
+      - ENABLE_DEBUGGER=false
+      - HOST_CONTAINERNAME=${BROWSERLESS_V2_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - SCREEN_DEPTH=16
+      - SCREEN_HEIGHT=1080
+      - SCREEN_WIDTH=1920
+      - TIMEOUT=300000
+      - TOKEN=${BROWSERLESS_TOKEN}
+      - TZ=Europe/Berlin
+    image: ghcr.io/browserless/chromium:v2.43.0@sha256:853e6f105b51aeed54b78f576dd88015e0d434300bcf4b0214afe70c6d31ed47
+    networks:
+      smoonet:
+    ports:
+      - "3001:3000/tcp"
+    restart: unless-stopped
+    shm_size: 2g
+    ## Start Traefik Config
+    # Komodo restore
+    labels:
+      - com.smoochy.komodo.restore_stack=browserless-v2
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/browserless.png
+      - net.unraid.docker.webui=${BROWSERLESS_V2_WEBUI_URL}
+  changedetection-io:
+    container_name: changedetection.io
+    depends_on:
+      - browserless-v2
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - BASE_URL=
+      - HOST_CONTAINERNAME=changedetection.io
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LOGGER_LEVEL=
+      - PLAYWRIGHT_DRIVER_URL=${CHANGEDETECTION_PLAYWRIGHT_DRIVER_URL}
+      - TZ=Europe/Berlin
+    image: dgtlmoon/changedetection.io:0.54.5@sha256:02a72f0e851e3cba08220f982fc589dbffa189b5fa626efee196d7d011e4c8c5
+    networks:
+      smoonet:
+    ports:
+      - "5000:5000/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/changedetection:/datastore:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=browserless-v2
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/changedetection.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

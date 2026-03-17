@@ -1,0 +1,217 @@
+http:
+  middlewares:
+    # https://github.com/l4rm4nd/traefik-warp
+    auto-warp:
+      plugin:
+        traefikwarp:
+          provider: auto
+          autoRefresh: true
+          refreshInterval: 24h
+          debug: false 
+
+    # https://github.com/freifunkMUC/traefik-crowdsec-bouncer
+    crowdsec-bouncer:
+      forwardAuth:
+        address: "http://crowdsec-traefik-bouncer:8080/api/v1/forwardAuth"
+        trustForwardHeader: true
+        maxResponseBodySize: 1048576
+    gzip:
+      compress: {}
+
+    # 1) Rate limit to slow down scanners / brute traffic
+    homepage-ratelimit:
+      rateLimit:
+        average: 100      # requests/sec averaged
+        burst: 200       # allowed burst
+
+    # Optional hardening headers (safe defaults)
+    homepage-secure-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: false
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "no-referrer"
+
+    security-headers:
+      headers:
+        browserXssFilter: true
+        contentTypeNosniff: true
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          X-Robots-Tag: "none,noarchive,nosnippet,notranslate,noimageindex"
+          server: ""
+        forceSTSHeader: true
+        hostsProxyHeaders:
+          - "X-Forwarded-Host"
+        permissionsPolicy: >
+          camera=(), microphone=(), geolocation=(), payment=(), usb=(), fullscreen=(self)
+        referrerPolicy: "same-origin"
+        sslProxyHeaders:
+          X-Forwarded-Proto: https
+        # stsIncludeSubdomains: true
+        # stsPreload: false              #keep false
+        # stsSeconds: 63072000           # 2 years
+
+
+
+
+# Combining the single middlewares into a chain
+    chain-internal:
+      chain:
+        middlewares:
+          - auto-warp
+          - security-headers
+          # - TODO: A
+          - gzip
+
+    chain-internal-bypass:
+      chain:
+        middlewares:
+          - auto-warp
+          - security-headers
+          - gzip
+
+    chain-external:
+      chain:
+        middlewares:
+          - auto-warp
+          - security-headers
+          - crowdsec-bouncer
+          #- TODO: Authentik
+          - gzip
+
+    # Needed for Registry
+    chain-external-bypass:
+      chain:
+        middlewares:
+          - auto-warp
+          - security-headers
+          - crowdsec-bouncer
+          - gzip
+
+
+  routers:
+    adguard-secondary:
+      rule: Host(`adguard.example.com`)
+      entryPoints:
+        - websecure-external
+      tls: {}
+      service: adguard-secondary
+      middlewares:
+        - chain-external
+
+    adguard-secondary-internal:
+      rule: "Host(`adguard.example.com`)"
+      entryPoints:
+        - websecure-internal
+      tls: {}
+      service: adguard-secondary
+      middlewares:
+        - chain-internal
+
+    homeassistant:
+      rule: Host(`automation.example.com`)
+      entryPoints:
+        - websecure-external
+      tls: {}
+      service: homeassistant
+      middlewares:
+        - chain-external
+
+    homeassistant-internal:
+      rule: "Host(`automation.example.com`)"
+      entryPoints:
+        - websecure-internal
+      tls: {}
+      service: homeassistant
+      middlewares:
+        - chain-internal
+
+
+    storage-host:
+      rule: Host(`storage.example.com`)
+      entryPoints:
+        - websecure-external
+      tls: {}
+      service: storage-host
+      middlewares:
+        - chain-external
+
+    storage-host-internal:
+      rule: "Host(`storage.example.com`)"
+      entryPoints:
+        - websecure-internal
+      tls: {}
+      service: storage-host
+      middlewares:
+        - gzip
+
+
+    workstation-host:
+      rule: Host(`workstation.example.com`)
+      entryPoints:
+        - websecure-external
+      tls: {}
+      service: workstation-host
+      middlewares:
+        - chain-external
+
+    workstation-host-internal:
+      rule: "Host(`workstation.example.com`)"
+      entryPoints:
+        - websecure-internal
+      tls: {}
+      service: workstation-host
+      middlewares:
+        - chain-internal
+
+
+    unifi:
+      rule: Host(`network.example.com`)
+      entryPoints:
+        - websecure-external
+      tls: {}
+      service: unifi
+      middlewares:
+        - chain-external
+
+    unifi-internal:
+      rule: "Host(`network.example.com`)"
+      entryPoints:
+        - websecure-internal
+      tls: {}
+      service: unifi
+      middlewares:
+        - chain-internal
+
+
+
+  services:
+    adguard-secondary:
+      loadBalancer:
+        servers:
+          - url: "http://192.0.2.2"
+
+    homeassistant:
+      loadBalancer:
+        servers:
+          - url: "http://192.0.2.10:8123"
+
+    unifi:
+      loadBalancer:
+        servers:
+          - url: "http://192.0.2.1"
+  
+    storage-host:
+      loadBalancer:
+        servers:
+          - url: "http://192.0.2.99:8081"
+    
+    workstation-host:
+      loadBalancer:
+        servers:
+          - url: "http://192.0.2.5:5000"

@@ -1,0 +1,59 @@
+services:
+  prowlarr:
+    container_name: prowlarr
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      - UMASK=022
+    image: ghcr.io/linuxserver/prowlarr:2.3.0.5236-ls138@sha256:a8fe7b9c502f979146b6d0f22438b825c38e068241bb8a708c473062dffdbb03
+    networks:
+      smoonet:
+    ports:
+      - "9696:9696/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/prowlarr:/config:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prowlarr.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

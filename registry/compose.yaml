@@ -1,0 +1,108 @@
+services:
+  registry:
+    container_name: registry
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - OTEL_TRACES_EXPORTER=none
+      - TZ=Europe/Berlin
+    image: registry:3.0.0@sha256:6c5666b861f3505b116bb9aa9b25175e71210414bd010d92035ff64018f9457e
+    networks:
+      smoonet:
+    ports:
+      - "5001:5000/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/registry/auth:/auth:rw
+      - /srv/appdata/registry/config/config.yml:/etc/distribution/config.yml:ro
+      - /srv/appdata/registry/data:/var/lib/registry:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=gzip@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      # This middleware is intentionally chosen to allow authentication to pass through to the registry, which will handle it. Do not change to "chain-external@file" or similar, as that would break authentication.
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/docker-moby.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+  registry-ui:
+    container_name: registry-ui
+    depends_on:
+      - registry
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - HOST_CONTAINERNAME=${REGISTRY_UI_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    image: quiq/registry-ui:0.12.0@sha256:0d066cddfb87427d1907801cd5f955a5af4633ac3bae25273184dd80a96289be
+    networks:
+      smoonet:
+    ports:
+      - "8002:8000/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/registry-ui/config/config.yml:/opt/config.yml:ro
+      - /srv/appdata/registry-ui/data:/opt/data:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-internal.rule=Host(`${REGISTRY_UI_EXTERNAL_URL}`)
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-internal.service=${REGISTRY_UI_SERVICE}
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-external.priority=10
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-external.rule=Host(`${REGISTRY_UI_EXTERNAL_URL}`)
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-external.service=${REGISTRY_UI_SERVICE}
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-bypass.rule=Host(`${REGISTRY_UI_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-bypass.service=${REGISTRY_UI_SERVICE}
+      - traefik.http.routers.${REGISTRY_UI_SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${REGISTRY_UI_SERVICE}.loadbalancer.server.url=${REGISTRY_UI_INTERNAL_URL}
+      ## End Traefik Config
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=registry
+      # Unraid metadata
+      - net.unraid.docker.icon=https://github.com/juusujanar/unraid-templates/raw/master/img/DockerRegistry-logo.png
+      - net.unraid.docker.webui=${REGISTRY_UI_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

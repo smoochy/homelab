@@ -1,0 +1,94 @@
+services:
+  cloudberry-backup:
+    container_name: CloudBerryBackup
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - APP_NICENESS=0
+      - CBB_WEB_INTERFACE_PASSWORD=${CLOUDBERRY_WEB_INTERFACE_PASSWORD}
+      - CBB_WEB_INTERFACE_USER=${CLOUDBERRY_WEB_INTERFACE_USER}
+      - CONTAINER_DEBUG=0
+      - DARK_MODE=1
+      - DISPLAY_HEIGHT=1080
+      - DISPLAY_WIDTH=1920
+      - ENABLE_CJK_FONT=0
+      - GROUP_ID=100
+      - HOST_CONTAINERNAME=CloudBerryBackup
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - INSTALL_PACKAGES=
+      - KEEP_APP_RUNNING=0
+      - PACKAGES_MIRROR=
+      - SECURE_CONNECTION=0
+      - SECURE_CONNECTION_CERTS_CHECK_INTERVAL=60
+      - SECURE_CONNECTION_VNC_METHOD=SSL
+      - SUP_GROUP_IDS=
+      - TZ=Europe/Berlin
+      - UMASK=0000
+      - USER_ID=99
+      - VNC_LISTENING_PORT=5900
+      - VNC_LOCALHOST_ONLY=0
+      - VNC_PASSWORD=${CLOUDBERRY_VNC_PASSWORD}
+      - WEB_AUDIO=0
+      - WEB_AUTHENTICATION=0
+      - WEB_AUTHENTICATION_PASSWORD=${CLOUDBERRY_WEB_AUTHENTICATION_PASSWORD}
+      - WEB_AUTHENTICATION_TOKEN_VALIDITY_TIME=24
+      - WEB_AUTHENTICATION_USERNAME=
+      - WEB_FILE_MANAGER=0
+      - WEB_FILE_MANAGER_ALLOWED_PATHS=AUTO
+      - WEB_FILE_MANAGER_DENIED_PATHS=
+      - WEB_LISTENING_PORT=5800
+      - WEB_LOCALHOST_ONLY=0
+      - WEB_NOTIFICATION=0
+    image: jlesage/cloudberry-backup:v26.03.1@sha256:f755646f253968e561c145d150d020c951dd8cfdbc31e69d1a6f2cc2e596d82e
+    networks:
+      smoonet:
+    ports:
+      - "43210:43210/tcp"
+      - "43211:43211/tcp"
+      - "5800:5800/tcp"
+      - "5900:5900/tcp"
+    restart: unless-stopped
+    volumes:
+      - ./hooks/56-cloudberry-icon-perms.sh:/etc/cont-init.d/56-cloudberry-icon-perms.sh:ro
+      - ./hooks/95-cloudberry-icon-perms-restore.sh:/etc/cont-finish.d/95-cloudberry-icon-perms-restore.sh:ro
+      - /srv/appdata/CloudBerryBackup:/config:rw
+      - /srv/backups:/storage:ro
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/backblaze.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

@@ -1,0 +1,69 @@
+services:
+  plex:
+    container_name: plex
+    healthcheck:
+      disable: true # Matches --no-healthcheck
+    image: ghcr.io/linuxserver/plex:version-1.43.0.10492-121068a07@sha256:79dfc89947410ec120a3e34cf68f746f6f154de20772e6f27b9998ca9bd65a5e
+    restart: unless-stopped
+    # Network (macvlan/br0 with static IP)
+    networks:
+      br0:
+        ipv4_address: 192.0.2.103
+
+    # Volumes
+    tmpfs:
+      - /tmp/plex:size=20000000000
+    volumes:
+      - /mnt/cache/appdata/Plex-Media-Server:/config:rw # Plex config/DB [web:68]
+      - /srv/data/Plex/:/data/Plex:rw # Media libraries
+      - /tmp/plex/:/transcode:rw # Transcode temp
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=plex
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PLEX_CLAIM=${PLEX_CLAIM} # Replace with your actual claim token from https://www.plex.tv/claim/
+      - PLEX_GID=100
+      - PLEX_UID=99
+      - TZ=Europe/Berlin
+      - VERSION=plexpass # Plex Pass required
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=plex
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/plexinc/pms-docker/master/img/plex-server.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  br0:
+    external: true
+    name: br0

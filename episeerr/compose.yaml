@@ -1,0 +1,73 @@
+services:
+  episeerr:
+    container_name: episeerr
+    image: vansmak/episeerr:3.4.0@sha256:cb25eca8da479f1eec61b8f99d49dd8b64721dd65524aa54751653d741924674
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "5002:5002/tcp" # Episeerr UI (non-standard port!)
+    # Volumes
+    volumes:
+      - /srv/appdata/episeerr/config:/app/config:rw
+      - /srv/appdata/episeerr/data:/app/data:rw
+      - /srv/appdata/episeerr/logs:/app/logs:rw
+      - /srv/appdata/episeerr/temp:/app/temp:rw
+
+    # Environment variables
+    environment:
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+      - AUTH_USERNAME=${AUTH_USERNAME}
+      - EPISEERR_AUTO_CREATE_TAGS=true
+      - FLASK_DEBUG=false
+      - HOST_CONTAINERNAME=episeerr
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LOG_LEVEL=INFO
+      - LOG_PATH=logs/app.log
+      - REQUIRE_AUTH=true
+      - SECRET_KEY=${SECRET_KEY}
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (Episeerr specific: 5002!)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=episeerr
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/Vansmak/episeerr/refs/heads/main/static/logo_icon.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

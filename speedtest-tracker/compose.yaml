@@ -1,0 +1,74 @@
+services:
+  speedtest-tracker:
+    container_name: speedtest-tracker
+    image: ghcr.io/linuxserver/speedtest-tracker:1.13.11@sha256:8846d9727f3a6c6b86426abd80345bebcb26cfcb15e56d0bea8df78d50d106f6
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "8003:1000/tcp" # Web UI
+    # Volumes
+    volumes:
+      - /srv/appdata/speedtest-tracker:/config:rw # Config & data [web:58]
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=speedtest-tracker
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+      # App config
+      - APP_KEY=${APP_KEY}
+      - APP_URL=${TRAEFIK_INTERNAL_URL}
+      - DB_CONNECTION=sqlite
+      - DISPLAY_TIMEZONE=Europe/Berlin
+      - PRUNE_RESULTS_OLDER_THAN=365 # Days
+      - SPEEDTEST_BLOCKED_SERVERS=31448,30907
+      - SPEEDTEST_SCHEDULE="0 */2 * * *" # Every 2h
+      # LinuxServer user mapping
+      - PGID=100
+      - PUID=99
+      - UMASK=022
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (app on 80)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=speedtest-tracker
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/speedtest-tracker-logo.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

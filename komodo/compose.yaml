@@ -1,0 +1,174 @@
+################################
+# 🦎 KOMODO COMPOSE - MONGO 🦎 #
+################################
+
+## This compose file will deploy:
+##    1. Dockerproxy (https://docs.linuxserver.io/images/docker-socket-proxy/)
+##    2. MongoDB
+##    3. Komodo Core
+##    4. Komodo Periphery
+
+services:
+  dockerproxy:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: dockerproxy
+    restart: unless-stopped
+    environment:
+      - ALLOW_START=1     # Start containers/stacks
+      - ALLOW_STOP=1      # Stop containers/stacks
+      - ALLOW_RESTARTS=1  # Restart containers
+      - AUTH=0            # optional
+      - BUILD=1           # Needed for Komodo's build features
+      - COMMIT=0          # optional
+      - CONFIGS=0         # optional
+      - CONTAINERS=1      # Essential for viewing, managing, and deploying containers
+      - DISABLE_IPV6=0    # optional
+      - DISTRIBUTION=0    # optional
+      - EVENTS=1          # optional
+      - EXEC=1            # Required for terminal/exec access to containers
+      - IMAGES=1          # Required to pull and manage Docker images
+      - INFO=1            # Allows Komodo to retrieve Docker daemon information
+      - LOG_LEVEL=info    # optional
+      - NETWORKS=1        # Needed to manage container networking
+      - NODES=0           # optional
+      - PING=1            # Health check capability
+      - PLUGINS=0         # optional
+      - POST=1            # General POST operations (neede for image pull etc)
+      - SECRETS=0         # optional
+      - SERVICES=0        # optional
+      - SESSION=0         # optional
+      - SWARM=0           # optional
+      - SYSTEM=1          # optional
+      - TASKS=0           # optional
+      - TZ=Europe/Berlin  # optional
+      - VERSION=1         # Requesting Docker API Information
+      - VOLUMES=1         # Required for managing persistent storage
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - smoonet
+
+  mongo:
+    image: mongo
+    container_name: komodo-mongo-db
+    labels:
+      - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
+      - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mongodb.png"
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    restart: unless-stopped
+    # ports:
+    #   - 27017:27017
+    volumes:
+      - /srv/appdata/komodo/mongo-config:/data/db
+      - /srv/appdata/komodo/mongo-db:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
+    networks:
+      - smoonet
+
+  core:
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-latest}
+    container_name: komodo-core
+    labels:
+      # Prevent Komodo from stopping with StopAllContainers
+      - komodo.skip=true
+      ## Start Traefik Config
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.rule=Host(`${KOMODO_TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.service=${KOMODO_SERVICE}
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.tls=true
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.tls.certresolver=cloudflare
+      # # External
+      - traefik.http.routers.${KOMODO_SERVICE}-external.rule=Host(`${KOMODO_TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${KOMODO_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${KOMODO_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${KOMODO_SERVICE}-external.priority=10
+      - traefik.http.routers.${KOMODO_SERVICE}-external.service=${KOMODO_SERVICE}
+      - traefik.http.routers.${KOMODO_SERVICE}-external.tls=true
+      - traefik.http.routers.${KOMODO_SERVICE}-external.tls.certresolver=cloudflare
+      # # HTTP-Header
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.rule=Host(`${KOMODO_TRAEFIK_EXTERNAL_URL}`) && Header(`${X_SPECIAL_HEADER}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.service=${KOMODO_SERVICE}
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.tls=true
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.tls.certresolver=cloudflare
+      # KOMODO_SERVICE port (must match the port Komodo listens on INSIDE the container)
+      - traefik.http.services.${KOMODO_SERVICE}.loadbalancer.server.url=${KOMODO_TRAEFIK_INTERNAL_URL}
+      - traefik.docker.network=smoonet
+      ## End Traefik Config
+      - net.unraid.docker.managed=composeman
+      - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png"
+      - net.unraid.docker.webui="${KOMODO_TRAEFIK_INTERNAL_URL}"
+    networks:
+      - smoonet
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - mongo
+      - dockerproxy
+    ports:
+      - 9120:9120
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - KOMODO_DATABASE_ADDRESS=mongo:27017
+      - KOMODO_DATABASE_USERNAME=${KOMODO_DB_USERNAME}
+      - KOMODO_DATABASE_PASSWORD=${KOMODO_DB_PASSWORD}
+    volumes:
+      ## Store dated backups of the database - https://komo.do/docs/setup/backup
+      - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
+      ## Store sync files on server
+      - /srv/appdata/komodo/syncs:/syncs
+      ## Optionally mount a custom core.config.toml
+      - /srv/appdata/komodo/config:/config
+      ## Allows for systemd Periphery connection at 
+      ## "https://host.docker.internal:8120"
+      # extra_hosts:
+      #   - host.docker.internal:host-gateway
+      ## Deploy Periphery container using this block,
+      ## or deploy the Periphery binary with systemd using 
+      ## https://github.com/moghtech/komodo/tree/main/scripts
+  periphery:
+    image: ghcr.io/smoochy/komodo-periphery-sops-age:latest
+    container_name: komodo-periphery
+    labels:
+      - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
+      - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png"
+      - net.unraid.docker.webui="${KOMODO_TRAEFIK_INTERNAL_URL}"
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - PERIPHERY_REPO_DIR=/etc/komodo/repos
+      - PERIPHERY_STACK_DIR=/etc/komodo/stacks
+      - PERIPHERY_BUILD_DIR=/etc/komodo/builds
+    volumes:
+      - /proc:/proc
+      ## Specify the Periphery agent root directory.
+      ## Must be the same inside and outside the container,
+      ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
+      ## Default: /etc/komodo.
+      - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+      - /srv/appdata/komodo/repos:/etc/komodo/repos
+      - /srv/appdata/komodo/stacks:/etc/komodo/stacks
+      - /srv/appdata/komodo/builds:/etc/komodo/builds
+      - /srv/appdata/komodo/root:/root
+    networks:
+      - smoonet
+
+volumes:
+  # Mongo
+  mongo-data:
+  mongo-config:
+
+
+networks:
+  smoonet:
+    external: true
+    name: smoonet

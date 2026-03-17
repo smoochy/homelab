@@ -1,0 +1,139 @@
+services:
+  adguard-home-sync:
+    container_name: adguard-home-sync
+    depends_on:
+      - adguard-home-unbound
+    image: ghcr.io/linuxserver/adguardhome-sync:v0.9.0-ls159@sha256:94c77f33c87108197e40b1e4fb8721d42e281d2eaaf7b5fe2e8db3af3301ebef
+    restart: unless-stopped
+
+    # Network config
+    networks:
+      smoonet: {}
+    # Ports
+    ports:
+      - "8083:8080" # UI / API [web:6]
+      - "9105:8080" # Same container port, different external port (Prometheus etc.)
+    # Volumes
+    volumes:
+      - /srv/appdata/adguard-home-sync:/config # Contains adguardhome-sync.yaml [web:6][web:14]
+    # Environment variables
+    environment:
+      - CONFIGFILE=/config/adguard-home-sync.yaml
+      - HOST_CONTAINERNAME=adguard-home-sync
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      - UMASK=022
+
+    # Resource limits (Compose style)
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+
+    # Unraid labels
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.rule=Host(`${ADGUARD_HOME_SYNC_EXTERNAL_URL}`)
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.service=${ADGUARD_HOME_SYNC_SERVICE}
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.priority=10
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.rule=Host(`${ADGUARD_HOME_SYNC_EXTERNAL_URL}`)
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.service=${ADGUARD_HOME_SYNC_SERVICE}
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.rule=Host(`${ADGUARD_HOME_SYNC_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.service=${ADGUARD_HOME_SYNC_SERVICE}
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${ADGUARD_HOME_SYNC_SERVICE}.loadbalancer.server.url=${ADGUARD_HOME_SYNC_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=adguard-home
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/linuxserver-ls-logo.png
+  adguard-home-unbound:
+    container_name: adguard-home-unbound
+    image: ghcr.io/mainfrezzer/adguardhome:v0.107.73@sha256:305b4837e6271e76eeff6960e7a068c0d495c2fe2309934cab2618c878ea6a21
+    restart: unless-stopped
+
+    # Network config (macvlan/br0 mit fester IP)
+    networks:
+      br0:
+        ipv4_address: 192.0.2.3
+      smoonet: {}
+    # Environment variables
+    environment:
+      - DNSSEC_ENABLE=0
+      - HOST_CONTAINERNAME=adguard-home-unbound
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PROVIDE_CONFIG=yes
+      - TCP_PORT_3000=3000
+      - TCP_PORT_53=53
+      - TCP_PORT_80=80
+      - TZ=Europe/Berlin
+      - UDP_PORT_53=53
+
+    # Volumes
+    volumes:
+      - /srv/appdata/adguard/config:/opt/adguardhome/conf
+      - /srv/appdata/adguard/workingdir:/opt/adguardhome/work
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+
+    # Unraid Labels
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=adguard-home
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/Mainfrezzer/UnRaid-Templates/main/icon/adguard.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  br0:
+    external: true
+    name: br0
+  smoonet:
+    external: true
+    name: smoonet

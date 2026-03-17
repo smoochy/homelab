@@ -1,0 +1,197 @@
+services:
+  gluetun:
+    container_name: gluetun
+    hostname: gluetun
+    image: qmcgaw/gluetun:v3.41.1@sha256:1a5bf4b4820a879cdf8d93d7ef0d2d963af56670c9ebff8981860b6804ebc8ab
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+        aliases:
+          - gluetun
+
+    # Ports
+    ports:
+      - "8000:8000/tcp" # HTTP control server
+      - "8001:8000/tcp" # HTTP control server (alt)
+      - "8082:8080/tcp" # HTTP control server
+      - "8888:8888/tcp" # HTTP proxy [web:38][web:49]
+    # Volumes
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - /srv/appdata/gluetun:/gluetun
+
+    # Environment variables
+    # Generic host info
+    environment:
+      - HOST_CONTAINERNAME=gluetun
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+      # Gluetun core VPN config
+      - VPN_INTERFACE=tun0
+      - VPN_SERVICE_PROVIDER=protonvpn
+      - VPN_TYPE=wireguard
+
+      # WireGuard - sensitive values moved to .env
+      - WIREGUARD_ADDRESSES=${GLUETUN_WG_ADDRESSES}
+      - WIREGUARD_ALLOWED_IPS=0.0.0.0/0,::/0
+      - WIREGUARD_MTU=1500
+      - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=${GLUETUN_WG_KEEPALIVE}
+      - WIREGUARD_PRESHARED_KEY=${GLUETUN_WG_PRESHARED_KEY}
+      - WIREGUARD_PRIVATE_KEY=${GLUETUN_WG_PRIVATE_KEY}
+      - WIREGUARD_PUBLIC_KEY=${GLUETUN_WG_PUBLIC_KEY}
+
+      # Endpoint (leave empty or override via .env)
+      - VPN_ENDPOINT_IP=${GLUETUN_VPN_ENDPOINT_IP}
+      - VPN_ENDPOINT_PORT=${GLUETUN_VPN_ENDPOINT_PORT}
+
+      # OpenVPN settings (kept for compatibility, but unused with wireguard) [web:45]
+      - OPENVPN_AUTH=
+      - OPENVPN_CIPHERS=
+      - OPENVPN_CUSTOM_CONFIG=
+      - OPENVPN_FLAGS=
+      - OPENVPN_IPV6=off
+      - OPENVPN_PASSWORD=${GLUETUN_OPENVPN_PASSWORD}
+      - OPENVPN_PROCESS_USER=no
+      - OPENVPN_PROTOCOL=tcp
+      - OPENVPN_USER=${GLUETUN_OPENVPN_USER}
+      - OPENVPN_VERBOSITY=0
+      - OPENVPN_VERSION=2.6
+
+      # Server selection
+      - SERVER_CITIES=
+      - SERVER_COUNTRIES=Netherlands #,Germany
+      - SERVER_HOSTNAMES=
+      - SERVER_NAMES=
+
+      # Port forwarding (Proton not supported for WG, default off) [web:43][web:51]
+      - PORT_FORWARD_ONLY=off
+      - VPN_PORT_FORWARDING=off
+      - VPN_PORT_FORWARDING_DOWN_COMMAND=
+      - VPN_PORT_FORWARDING_LISTENING_PORT=
+      - VPN_PORT_FORWARDING_PASSWORD=${GLUETUN_PORT_FORWARD_PASS}
+      - VPN_PORT_FORWARDING_PROVIDER=${GLUETUN_PORT_FORWARD_PROVIDER}
+      - VPN_PORT_FORWARDING_STATUS_FILE=/gluetun/forwarded_port
+      - VPN_PORT_FORWARDING_UP_COMMAND=
+      - VPN_PORT_FORWARDING_USERNAME=${GLUETUN_PORT_FORWARD_USER}
+
+      # Firewall [web:52]
+      - FIREWALL=on
+      - FIREWALL_DEBUG=off
+      - FIREWALL_INPUT_PORTS=
+      - FIREWALL_OUTBOUND_SUBNETS=192.0.2.0/24
+      - FIREWALL_VPN_INPUT_PORTS=
+
+      # DNS settings [web:45][web:49]
+      - BLOCK_ADS=off
+      - BLOCK_MALICIOUS=on
+      - BLOCK_SURVEILLANCE=on
+      - DNS_ADDRESS=
+      - DNS_BLOCK_IP_PREFIXES=127.0.0.1/8,10.0.0.0/8,172.16.0.0/12,192.0.2.0/24,169.254.0.0/16,::1/128,fc00::/7,fe80::/10,::ffff:7f00:1/104,::ffff:a00:0/104,::ffff:a9fe:0/112,::ffff:ac10:0/108,::ffff:c0a8:0/112
+      - DNS_CACHING=on
+      - DNS_KEEP_NAMESERVER=off
+      - DNS_SERVER=on
+      - DNS_UPDATE_PERIOD=24h
+      - DNS_UPSTREAM_IPV6=off
+      - DNS_UPSTREAM_RESOLVERS=quad9 secured
+      - UNBLOCK=
+
+      # HTTP proxy
+      - HTTPPROXY=off
+      - HTTPPROXY_LOG=off
+      - HTTPPROXY_PASSWORD=${GLUETUN_HTTPPROXY_PASSWORD}
+      - HTTPPROXY_STEALTH=off
+      - HTTPPROXY_USER=${GLUETUN_HTTPPROXY_USER}
+
+      # Shadowsocks
+      - SHADOWSOCKS=off
+      - SHADOWSOCKS_CIPHER=chacha20-ietf-poly1305
+      - SHADOWSOCKS_LOG=off
+      - SHADOWSOCKS_PASSWORD=${GLUETUN_SS_PASSWORD}
+
+      # Healthcheck & updater [web:50]
+      - HEALTH_RESTART_VPN=on
+      - HEALTH_SERVER_ADDRESS=127.0.0.1:9999
+      - HEALTH_TARGET_ADDRESSES=cloudflare.com:443
+      - HTTP_CONTROL_SERVER_LOG=on
+      - PUBLICIP_ENABLED=true
+      - PUBLICIP_FILE=/gluetun/ip
+      - UPDATER_PERIOD=24h
+      - VERSION_INFORMATION=on
+
+      # UID/GID mapping
+      - PGID=1000
+      - PUID=1000
+
+      # Logging
+      - LOG_LEVEL=info
+    labels:
+      - com.smoochy.komodo.restore_stack=gluetun
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/qdm12/gluetun/master/doc/logo_256.png
+  sabnzbd:
+    container_name: sabnzbd
+    depends_on:
+      - gluetun
+    image: ghcr.io/linuxserver/sabnzbd:4.5.5-ls244@sha256:1a26f56dfc047b62d5ddc20bc92bdebfbe7c3cb58d2d3523958838a09182d77a
+    restart: unless-stopped
+
+    # Network: Share network stack with gluetunvpn (VPN routing)
+    network_mode: "container:gluetun" # Uses gluetun's network namespace [web:38][web:54]
+    # Volumes
+    volumes:
+      - /srv/appdata/sabnzbd/scripts:/scripts # Custom scripts [web:53]
+      - /srv/appdata/sabnzbd:/config # App config [web:53]
+      - /srv/data/:/data/ # Downloads/incomplete
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=sabnzbd
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      - UMASK=000
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (SABnzbd default: 8080 inside container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=gluetun
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/sabnzbd.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

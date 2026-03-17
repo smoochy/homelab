@@ -1,0 +1,91 @@
+services:
+  homepage:
+    container_name: homepage
+    image: ghcr.io/gethomepage/homepage:v1.10.1@sha256:0b596092c0b55fe4c65379a428a3fe90bd192f10d1b07d189a34fe5fabe7eedb
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "3003:3000/tcp" # Homepage UI
+    # Volumes
+    volumes:
+      - /srv/appdata/homepage/config:/app/config:rw # config.yml, services.yml [web:57]
+    # Environment variables
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375 # Docker integration
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+      # Service API keys/tokens (all moved to .env)
+      - HOMEPAGE_VAR_ADGUARD_ADGH_PASSWORD=${HOMEPAGE_ADGUARD_ADGH_PASS}
+      - HOMEPAGE_VAR_ADGUARD_ADGH_USERNAME=${HOMEPAGE_ADGUARD_ADGH_USER}
+      - HOMEPAGE_VAR_ADGUARD_RASPY_PASSWORD=${HOMEPAGE_ADGUARD_RASPY_PASS}
+      - HOMEPAGE_VAR_ADGUARD_RASPY_USERNAME=${HOMEPAGE_ADGUARD_RASPY_USER}
+      - HOMEPAGE_VAR_ADGUARD_SMOORAID_PASSWORD=${HOMEPAGE_ADGUARD_SMOO_PASS}
+      - HOMEPAGE_VAR_ADGUARD_SMOORAID_USERNAME=${HOMEPAGE_ADGUARD_SMOO_USER}
+      - HOMEPAGE_VAR_AUTHENTIK_TOKEN=${HOMEPAGE_AUTHENTIK_TOKEN}
+      - HOMEPAGE_VAR_CHANGEDETECTION_KEY=${HOMEPAGE_CD_KEY}
+      - HOMEPAGE_VAR_CROWDSEC_PASSWORD=${HOMEPAGE_CROWDSEC_PASS}
+      - HOMEPAGE_VAR_HOMEASSISTANT_TOKEN=${HOMEPAGE_HA_TOKEN}
+      - HOMEPAGE_VAR_HOMEBRIDGE_PASSWORD=${HOMEPAGE_HOMEBRIDGE_PASS}
+      - HOMEPAGE_VAR_HOMEBRIDGE_USERNAME=${HOMEPAGE_HOMEBRIDGE_USER}
+      - HOMEPAGE_VAR_PLEX_TOKEN=${HOMEPAGE_PLEX_TOKEN}
+      - HOMEPAGE_VAR_PROWLARR_KEY=${HOMEPAGE_PROWLARR_KEY}
+      - HOMEPAGE_VAR_RADARR_KEY=${HOMEPAGE_RADARR_KEY}
+      - HOMEPAGE_VAR_ROUTER_STATUS_TOKEN=${HOMEPAGE_ROUTER_TOKEN}
+      - HOMEPAGE_VAR_SABNZBD_KEY=${HOMEPAGE_SABNZBD_KEY}
+      - HOMEPAGE_VAR_SEERR_KEY=${HOMEPAGE_SEER_KEY}
+      - HOMEPAGE_VAR_SONARR_KEY=${HOMEPAGE_SONARR_KEY}
+      - HOMEPAGE_VAR_SPEEDTEST_KEY=${HOMEPAGE_SPEEDTEST_KEY}
+      - HOMEPAGE_VAR_TAUTULLI_KEY=${HOMEPAGE_TAUTULLI_KEY}
+      - HOMEPAGE_VAR_UNIFI_SERVICE_PASSWORD=${HOMEPAGE_UNIFI_PASSWORD}
+      - HOMEPAGE_VAR_UNIFI_SERVICE_USERNAME=${HOMEPAGE_UNIFI_USER}
+      - HOMEPAGE_VAR_UNIFI_WIDGET_KEY=${HOMEPAGE_UNIFI_WIDGET_KEY}
+      - HOMEPAGE_VAR_UNRAID_KEY=${HOMEPAGE_UNRAID_KEY}
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file,homepage-ratelimit@file,homepage-secure-headers@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file,homepage-ratelimit@file,homepage-secure-headers@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (Homepage on 3000)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.passHostHeader=true
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=homepage
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/gethomepage/homepage/main/public/android-chrome-512x512.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true

@@ -1,0 +1,77 @@
+services:
+  redis:
+    container_name: yamtrack-redis
+    environment:
+      - SECRET=${SECRET}
+    image: redis:8.6.1-alpine3.23@sha256:2afba59292f25f5d1af200496db41bea2c6c816b059f57ae74703a50a03a27d0
+    labels:
+      - com.smoochy.komodo.restore_stack=yamtrack
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/yamtrack/redis_data:/data
+
+    # Network
+    networks:
+      smoonet:
+  yamtrack:
+    container_name: yamtrack
+    depends_on:
+      - redis
+    environment:
+      - ADMIN_ENABLED=false
+      - IGDB_ID=${IGDB_ID}
+      - IGDB_SECRET=${IGDB_SECRET}
+      - REDIS_URL=redis://redis:6379
+      - REGISTRATION=false
+      - SECRET=${SECRET}
+      - STEAM_API_KEY=${STEAM_API_KEY}
+      - TMDB_API=${TMDB_API}
+      - TMDB_LANG=${TMDB_LANG}
+      - TMDB_NSFW=${TMDB_NSFW}
+      - TZ=Europe/Berlin
+    image: ghcr.io/fuzzygrim/yamtrack:0.25.0@sha256:df76008258452a6cda73d971dc4ffbcbca96c5220154a02c9b70bf0bb0e24931
+    restart: unless-stopped
+
+    # Network
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=yamtrack
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/yamtrack.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+    networks:
+      smoonet:
+    ports:
+      - "8005:8000"
+    volumes:
+      - /srv/appdata/yamtrack/db:/yamtrack/db
+networks:
+  smoonet:
+    external: true
+volumes:
+  redis_data:

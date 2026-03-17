@@ -1,0 +1,41 @@
+services:
+  umlautadaptarr:
+    container_name: umlautadaptarr
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - APP_UID=1654
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LIDARR__APIKEY=${UMLAUTADAPTARR_LIDARR_APIKEY}
+      - LIDARR__ENABLED=false
+      - LIDARR__HOST=
+      - RADARR__APIKEY=${UMLAUTADAPTARR_RADARR_APIKEY}
+      - RADARR__ENABLED=true
+      - RADARR__HOST=http://radarr:7878
+      - READARR__APIKEY=${UMLAUTADAPTARR_READARR_APIKEY}
+      - READARR__ENABLED=false
+      - READARR__HOST=
+      - SONARR__APIKEY=${UMLAUTADAPTARR_SONARR_APIKEY}
+      - SONARR__ENABLED=true
+      - SONARR__HOST=http://sonarr:8989
+      - TZ=Europe/Berlin
+    image: pcjones/umlautadaptarr:0.7.5@sha256:2c6689d49afe51fcaa5e8a27e139855e0c8782e1e42ec595d8694b74094f991f
+    networks:
+      smoonet:
+    ports:
+      - "5005:5005/tcp"
+      - "5006:5006/tcp"
+    restart: unless-stopped
+    # Komodo restore
+    labels:
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/servarr.png
+      - net.unraid.docker.webui=${UNRAID_WEBUI}
+networks:
+  smoonet:
+    external: true

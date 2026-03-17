@@ -1,0 +1,10 @@
+services:
+  cloudflared:
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    container_name: cloudflared
+    image: cloudflare/cloudflared:2026.3.0@sha256:6b599ca3e974349ead3286d178da61d291961182ec3fe9c505e1dd02c8ac31b0
+    labels:
+      - com.smoochy.komodo.restore_stack=cloudflared
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png
+    network_mode: host  # Wichtig: Damit Tunnel lokale Services erreicht
+    restart: unless-stopped

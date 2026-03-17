@@ -1,0 +1,77 @@
+services:
+  tracearr:
+    container_name: tracearr
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LOG_LEVEL=${TRACEARR_LOG_LEVEL}
+      - PG_MAX_MEMORY=${TRACEARR_PG_MAX_MEMORY}
+      - TZ=${TRACEARR_TZ}
+    healthcheck:
+      interval: 30s
+      retries: 3
+      start_period: 60s
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://127.0.0.1:3000/health
+      timeout: 10s
+    image: ghcr.io/connorgallopo/tracearr:supervised-1.4.22@sha256:4f6fe7d9d9baab86271b57200146c023381463255575b59e0929d3bf52e5a2b0
+    mem_limit: ${TRACEARR_MEM_LIMIT}
+    networks:
+      - smoonet
+    ports:
+      - "${TRACEARR_PORT}:3000/tcp"
+    restart: unless-stopped
+    shm_size: ${TRACEARR_SHM_SIZE}
+    ulimits:
+      nofile:
+        hard: 65536
+        soft: 65536
+    volumes:
+      - /srv/appdata/tracearr:/srv/appdata/tracearr:rw
+      - /srv/appdata/tracearr:/data/tracearr
+      - tracearr_postgres:/data/postgres
+      - tracearr_redis:/data/redis
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/servarr.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+networks:
+  smoonet:
+    external: true
+volumes:
+  # tracearr_data:
+  tracearr_postgres:
+  tracearr_redis:

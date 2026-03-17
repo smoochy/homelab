@@ -1,0 +1,134 @@
+services:
+  crowdsec:
+    container_name: crowdsec
+    environment:
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors
+      - GID=98
+      - HOST_CONTAINERNAME=crowdsec
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      - UID=99
+    image: ghcr.io/crowdsecurity/crowdsec:v1.7.6@sha256:63b595fef92de1778573b375897a45dd226637ee9a3d3db9f57ac7355c369493
+    labels:
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "6060:6060/tcp"
+      - "6061:8080/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/crowdsec/:/etc/crowdsec:rw
+      - /srv/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
+      - /srv/appdata/crowdsec:/var/log/crowdsec:rw
+      - /srv/appdata/traefik/logs/:/var/log/traefik:rw
+      - /var/log/syslog:/syslog:ro
+  crowdsec-dashboard:
+    container_name: crowdsec-dashboard
+    depends_on:
+      - crowdsec
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - MB_DB_FILE=/data/metabase.db
+      - MGID=98
+      - MUID=99
+      - TZ=Europe/Berlin
+    image: metabase/metabase:v0.59.2.2@sha256:2454205bed00ef92bfc2793fda480f9818e76956cacf43de1827e8ebae17a727
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "3000:3000/tcp"
+    restart: unless-stopped
+    volumes:
+      - /srv/appdata/crowdsec/dashboard/:/data/:rw
+      - /srv/appdata/crowdsec/data/:/metabase-data/:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+      - net.unraid.docker.webui=http://192.0.2.99:3000
+  crowdsec-firewall-bouncer:
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    container_name: crowdsec-firewall-bouncer
+    depends_on:
+      - crowdsec
+    environment:
+      - API_KEY=${CROWDSEC_FIREWALL_BOUNCER_API_KEY}
+      - API_URL=http://crowdsec:8080
+      - HOST_CONTAINERNAME=crowdsec-firewall-bouncer
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.34-patch1@sha256:c33bae81fdade1e1c243946bedfcdb5b22a25c4fbd1ef166ce32935334d7575c
+    labels:
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    network_mode: host
+    pids_limit: 2048
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /srv/appdata/crowdsec/bouncers/:/config:rw
+  crowdsec-traefik-bouncer:
+    container_name: crowdsec-traefik-bouncer
+    depends_on:
+      - crowdsec
+    environment:
+      - CROWDSEC_AGENT_HOST=crowdsec:8080
+      - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_API_KEY}
+      - CROWDSEC_BOUNCER_LOG_LEVEL=1
+      - GIN_MODE=release
+      - HOST_CONTAINERNAME=crowdsec-traefik-bouncer
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TRUSTED_PROXIES=192.0.2.0/24,127.0.0.1,172.19.0.0/24,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32
+      - TZ=Europe/Berlin
+    image: ghcr.io/freifunkmuc/traefik-crowdsec-bouncer:v0.6.1@sha256:e88f9b7bfdd397c5890d38f3af9d3e0aa7db74a7c649949b9028b2dc05669f5a
+    labels:
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    networks:
+      - smoonet
+    pids_limit: 2048
+    restart: unless-stopped
+networks:
+  smoonet:
+    external: true

@@ -1,0 +1,215 @@
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:v3.6.10@sha256:c549d482c55d7a797398562064f35428cc53e748d84d7190997930e7b31bcc32
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "100m"
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports (host binding)
+    ports:
+      - "443:443/tcp" # HTTPS
+      - "444:444/tcp" # TCP (your custom)
+      - "8080:8080/tcp" # Dashboard
+      - "80:80/tcp" # HTTP
+      - "81:81/tcp" # Additional HTTP
+    # Volumes
+    volumes:
+      - /srv/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    # Environment variables
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN} # Cloudflare API token (sensitive!)
+      - DOCKER_HOST=tcp://dockerproxy:2375 # Docker socket proxy
+      - HOST_CONTAINERNAME=traefik
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/unraid-templates/master/traefik/traefik.png
+      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+  geoipupdate:
+    container_name: geoipupdate
+    image: ghcr.io/maxmind/geoipupdate:v7.1.1@sha256:faecdca22579730ab0b7dea5aa9af350bb3c93cb9d39845c173639ead30346d2
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+
+    # Volumes
+    volumes:
+      - /srv/appdata/traefik-dashboard/data/geoip/:/usr/share/GeoIP:rw
+
+    # Environment variables
+    environment:
+      - GEOIPUPDATE_ACCOUNT_ID=${GEOIPUPDATE_ACCOUNT_ID}
+      - GEOIPUPDATE_EDITION_IDS=GeoLite2-City GeoLite2-Country
+      - GEOIPUPDATE_FREQUENCY=24
+      - GEOIPUPDATE_LICENSE_KEY=${GEOIPUPDATE_LICENSE_KEY}
+      - HOST_CONTAINERNAME=geoipupdate
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    labels:
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/tritones/unraid-templates/main/templates/img/geoipupdate.png
+  traefik-log-dashboard:
+    container_name: traefik-log-dashboard
+    depends_on:
+      - traefik
+      - traefik-log-dashboard-agent
+    image: hhftechnology/traefik-log-dashboard:2.5.0@sha256:9500bb7dd01086681674725e84bfccff93d55fa7013ea9fadd6b51c506f22345
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "5101:3000/tcp" # Dashboard UI
+    # Volumes
+    volumes:
+      - /srv/appdata/traefik-dashboard/data/dashboard/:/app/data:rw
+
+    # Environment variables
+    environment:
+      - AGENT_API_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
+      - AGENT_API_URL=http://traefik-log-dashboard-agent:5000
+      - AGENT_NAME=smooRaid
+      - GID=1001
+      - HOST_CONTAINERNAME=traefik-log-dashboard
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - NODE_ENV=production
+      - TZ=Europe/Berlin
+      - UID=1001
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config (only for dashboard)
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.rule=Host(`${TRAEFIK_LOG_DASHBOARD_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.service=${TRAEFIK_LOG_DASHBOARD_SERVICE}
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.priority=10
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.rule=Host(`${TRAEFIK_LOG_DASHBOARD_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.service=${TRAEFIK_LOG_DASHBOARD_SERVICE}
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.rule=Host(`${TRAEFIK_LOG_DASHBOARD_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.service=${TRAEFIK_LOG_DASHBOARD_SERVICE}
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.tls=true
+      # Service port (dashboard runs on 3000)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${TRAEFIK_LOG_DASHBOARD_SERVICE}.loadbalancer.server.url=${TRAEFIK_LOG_DASHBOARD_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/user-attachments/assets/e6cf097b-2232-4c2c-ba55-5de780724aed
+      - net.unraid.docker.webui=${TRAEFIK_LOG_DASHBOARD_INTERNAL_URL}/dashboard
+  traefik-log-dashboard-agent:
+    container_name: traefik-log-dashboard-agent
+    depends_on:
+      - geoipupdate
+    image: hhftechnology/traefik-log-dashboard-agent:2.5.0@sha256:c3831df468a202b68418d04bc08f55456c7eba4eba596795e5dcbb6d8b3a5586
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports (internal API)
+    ports:
+      - "5100:5000/tcp"
+
+    # Volumes
+    volumes:
+      - /srv/appdata/traefik-dashboard/data/geoip/:/geoip:ro
+      - /srv/appdata/traefik-dashboard/data/positions/:/data:rw
+      - /srv/appdata/traefik/logs/:/logs:ro
+
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=traefik-log-dashboard-agent
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TRAEFIK_LOG_DASHBOARD_ACCESS_PATH=/logs/access.log
+      - TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
+      - TRAEFIK_LOG_DASHBOARD_ERROR_PATH=/logs/traefik.log
+      - TRAEFIK_LOG_DASHBOARD_GEOIP_CITY_DB=/geoip/GeoLite2-City.mmdb
+      - TRAEFIK_LOG_DASHBOARD_GEOIP_COUNTRY_DB=/geoip/GeoLite2-Country.mmdb
+      - TRAEFIK_LOG_DASHBOARD_GEOIP_ENABLED=true
+      - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
+      - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    labels:
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/user-attachments/assets/e6cf097b-2232-4c2c-ba55-5de780724aed
+networks:
+  smoonet:
+    external: true

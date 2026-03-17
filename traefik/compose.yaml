@@ -105,7 +105,7 @@ services:
     depends_on:
       - traefik
       - traefik-log-dashboard-agent
-    image: hhftechnology/traefik-log-dashboard:2.5.0@sha256:9500bb7dd01086681674725e84bfccff93d55fa7013ea9fadd6b51c506f22345
+    image: hhftechnology/traefik-log-dashboard:3.0.0@sha256:b9a8e6a3a2d7261526975beac67e605111f0d03aedf646016d9d230bef24c016
     restart: unless-stopped
 
     # Network

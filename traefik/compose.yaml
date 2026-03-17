@@ -116,20 +116,25 @@ services:
       - "5101:3000/tcp" # Dashboard UI
     # Volumes
     volumes:
-      - /srv/appdata/traefik-dashboard/data/dashboard/:/app/data:rw
+      - /srv/appdata/traefik-dashboard/data/dashboard/:/data:rw
+      - /srv/appdata/traefik-dashboard/data/geoip/:/geoip:ro
 
     # Environment variables
     environment:
-      - AGENT_API_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
-      - AGENT_API_URL=http://traefik-log-dashboard-agent:5000
-      - AGENT_NAME=smooRaid
-      - GID=1001
+      - AGENT_1_NAME=smooRaid
+      - AGENT_1_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
+      - AGENT_1_URL=http://traefik-log-dashboard-agent:5000
+      - DASHBOARD_AGENTS_ENV_ONLY=true
+      - DASHBOARD_MAX_LOGS_DISPLAY=500
+      - GEOIP_LOCAL_DB_PATH=/geoip/GeoLite2-City.mmdb
+      # Accounts are not free, hence disabled
+      #- GEOIP_PROVIDER_URLS=https://ipwho.is,https://ip-api.com/json
+      - GEOIP_UNKNOWN_CACHE_TTL_MS=300000
       - HOST_CONTAINERNAME=traefik-log-dashboard
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - NODE_ENV=production
       - TZ=Europe/Berlin
-      - UID=1001
 
     # Resource limits
     deploy:
@@ -169,8 +174,6 @@ services:
       - net.unraid.docker.webui=${TRAEFIK_LOG_DASHBOARD_INTERNAL_URL}/dashboard
   traefik-log-dashboard-agent:
     container_name: traefik-log-dashboard-agent
-    depends_on:
-      - geoipupdate
     image: hhftechnology/traefik-log-dashboard-agent:3.0.0@sha256:aa75766b9235bf9d8d28f4dd3b1e0902ce589b10386221d43e7eab6f19ce7e57
     restart: unless-stopped
 
@@ -183,7 +186,6 @@ services:
 
     # Volumes
     volumes:
-      - /srv/appdata/traefik-dashboard/data/geoip/:/geoip:ro
       - /srv/appdata/traefik-dashboard/data/positions/:/data:rw
       - /srv/appdata/traefik/logs/:/logs:ro
 
@@ -195,9 +197,6 @@ services:
       - TRAEFIK_LOG_DASHBOARD_ACCESS_PATH=/logs/access.log
       - TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
       - TRAEFIK_LOG_DASHBOARD_ERROR_PATH=/logs/traefik.log
-      - TRAEFIK_LOG_DASHBOARD_GEOIP_CITY_DB=/geoip/GeoLite2-City.mmdb
-      - TRAEFIK_LOG_DASHBOARD_GEOIP_COUNTRY_DB=/geoip/GeoLite2-Country.mmdb
-      - TRAEFIK_LOG_DASHBOARD_GEOIP_ENABLED=true
       - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
       - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
       - TZ=Europe/Berlin

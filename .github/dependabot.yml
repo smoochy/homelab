@@ -1,9 +1,0 @@
-# Reference configuration for your own repository.
-# Version updates are intentionally disabled in this published copy.
-version: 2
-updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "daily"
-    open-pull-requests-limit: 0

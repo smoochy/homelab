@@ -15,6 +15,9 @@ rest of the Docker updates in this repository:
   `smoochy`.
 - A dedicated check verifies that the PR is only the expected Metabase image
   update and that the public export still builds.
+- Because Renovate itself runs inside GitHub Actions, that validation workflow
+  is dispatched explicitly from the Renovate job instead of relying on a
+  follow-up PR event from `GITHUB_TOKEN`.
 - Once that check is green, Renovate merges the PR on the next Renovate run.
 - After merge, the public mirror receives a direct commit on `main` without
   going through the shared preview PR, even if that preview PR is already open
@@ -23,13 +26,14 @@ rest of the Docker updates in this repository:
 ## Flow
 
 1. Renovate detects a new `metabase/metabase` tag or digest and creates a PR.
-2. The `metabase-renovate-validate` workflow runs on that PR.
+2. The Renovate workflow dispatches `metabase-renovate-validate` for that PR.
 3. The workflow validates:
    - only `crowdsec/compose.yaml` changed
    - every changed image line is a `metabase/metabase` image line
    - the sanitized public export still builds successfully
 4. Renovate observes the green check on a later run and merges the PR.
-5. The merge to private `main` triggers `public-preview`.
+5. The merge to private `main` is picked up by `public-preview`, either via the
+   normal `push` trigger or via the dedicated post-`renovate` workflow trigger.
 6. If the merge is a Metabase-only image update, the public export is committed
    directly to the public repo `main`.
 
@@ -39,6 +43,8 @@ The dedicated check is intentionally narrow. It validates the expected Metabase
 PR shape instead of trying to become a general Renovate CI framework.
 
 - The check targets Renovate PRs that touch `crowdsec/compose.yaml`.
+- It supports both direct `pull_request` triggers and explicit
+  `workflow_dispatch` calls from the Renovate workflow.
 - It fails if the diff contains non-image changes or non-Metabase image changes.
 - It reuses the same export scripts that power the public mirror workflow so
   the merge gate reflects the real publish path.

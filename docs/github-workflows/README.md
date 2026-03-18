@@ -34,6 +34,9 @@ Metabase uses a narrower flow than the rest of the Renovate-managed images.
 - That PR stays bot-driven and is not assigned to `smoochy`.
 - A dedicated GitHub Actions check validates that the PR is a Metabase-only
   image/digest update and that the public export still builds.
+- The Renovate workflow explicitly dispatches that validation because PR events
+  created by the workflow token do not automatically fan out into another
+  workflow run.
 - Once the check is green, Renovate merges the PR on its next run.
 - After merge, image-only Metabase updates publish directly to the public repo
   even if the shared public preview PR is already open for unrelated changes.

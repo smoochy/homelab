@@ -22,33 +22,72 @@ repository and to contain these two PowerShell scripts:
 - `encrypt-env.ps1`
 - `decrypt-env.ps1`
 
-The provided setup is intended for Windows. If you want to use the same workflow
-on another operating system, you will need equivalent scripts or another local
-automation approach.
+The same setup can be used on Windows and macOS. The scripts set
+`SOPS_AGE_KEY_FILE` per operating system and call `sops` through `pwsh`.
+
+On macOS, install the required tools and place your age identity at:
+
+```sh
+~/.config/sops/age/keys.txt
+```
+
+Example installation:
+
+```sh
+brew install sops
+brew install age
+brew install --cask powershell
+```
+
+This installs PowerShell 7 and makes `pwsh` available in `PATH`.
+
+Verify your key setup with:
+
+```sh
+age-keygen -y ~/.config/sops/age/keys.txt
+```
+
+On Windows, install the required tools with `winget`:
+
+```powershell
+winget install --id Microsoft.PowerShell --source winget
+winget install --id Mozilla.SOPS --source winget
+winget install --id FiloSottile.age --source winget
+```
+
+The scripts expect the age identity at:
+
+```powershell
+$env:USERPROFILE\.config\sops\age\keys.txt
+```
 
 A possible alternative is the VS Code extension
 [signageOS SOPS](https://marketplace.visualstudio.com/items?itemName=signageos.signageos-vscode-sops).
 That may be a better fit if you want an editor-based SOPS workflow without the
 PowerShell script setup above.
 
-Add these commands to your VS Code user settings:
+Add these commands to your global VS Code user settings:
 
 ```json
 "filewatcher.commands": [
   {
-    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}\\.vscode\\.scripts\\encrypt-env.ps1\" -InputFile \"${file}\"",
+    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}/.vscode/.scripts/encrypt-env.ps1\" -InputFile \"${file}\"",
     "event": "onFileChange",
     "isAsync": true,
-    "match": ".env"
+    "match": "(^|[\\\\/])\\.env$"
   },
   {
-    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}\\.vscode\\.scripts\\decrypt-env.ps1\" -InputFile \"${file}\"",
+    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}/.vscode/.scripts/decrypt-env.ps1\" -InputFile \"${file}\"",
     "event": "onFileChange",
     "isAsync": true,
     "match": "\\.env\\.enc$"
   }
 ]
 ```
+
+The encrypt matcher intentionally targets only a real `.env` file at the end of
+the path. That prevents `.env.enc` from triggering both commands at once and
+avoids a failed attempt to encrypt an already encrypted file.
 
 That gives you this workflow:
 

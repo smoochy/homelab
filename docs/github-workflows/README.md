@@ -24,3 +24,19 @@ pattern that the stack definitions follow.
 The published `renovate.yaml` keeps the same path and file name, but its
 triggers are intentionally set to a non-matching branch and the job is guarded
 with `if: ${{ false }}` so it remains a reference copy only.
+
+## Metabase
+
+Metabase uses a narrower flow than the rest of the Renovate-managed images.
+
+- Renovate raises a normal PR for `metabase/metabase` updates instead of using
+  branch automerge.
+- That PR stays bot-driven and is not assigned to `smoochy`.
+- A dedicated GitHub Actions check validates that the PR is a Metabase-only
+  image/digest update and that the public export still builds.
+- Once the check is green, Renovate merges the PR on its next run.
+- After merge, image-only Metabase updates publish directly to the public repo
+  even if the shared public preview PR is already open for unrelated changes.
+
+See [`./metabase/README.md`](./metabase/README.md) for the detailed flow,
+validation rules, and test scenarios.

@@ -49,7 +49,7 @@ The focus is on:
 
 At the root level, this repository gives you:
 
-- one directory per stack or app
+- a [`stacks`](./stacks) directory that contains one folder per stack or app
 - a `compose.yaml` per stack
 - a tracked `.env.example` per stack as the configuration starting point
 - stack-specific `README.md` files with upstream links and context
@@ -82,7 +82,7 @@ can be used independently or as part of a narrower deployment scope.
 
 The layout is built to be easy to navigate:
 
-- stack directories contain the deployment files and local stack README
+- [`stacks`](./stacks) contains the deployment files and local stack READMEs
 - [`docs`](./docs/README.md) contains cross-stack deployment guidance
 - stack READMEs explain what each service is for, what images are used, and
   where the upstream project lives
@@ -97,6 +97,7 @@ For the deployment workflow itself, the most important docs are:
 One way to work from this repository is:
 
 1. Pick the stack directories that match the target environment.
+   These now live under [`stacks`](./stacks).
 2. Start from each stack's `.env.example` and fill in the local values.
 3. Adjust host paths, domains, and networking for the deployment environment.
 4. Follow the documentation in [`docs`](./docs/README.md) for encrypted env

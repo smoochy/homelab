@@ -109,7 +109,7 @@ matching.
 
 Each Komodo-managed stack follows the same deployment model:
 
-- `Run Directory` points to the stack folder, for example `caddy`
+- `Run Directory` points to the stack folder, for example `stacks/caddy`
 - `Config Files` includes `.env.enc`
 - `Requires` is set to `Redeploy`
 - `Pre Deploy` decrypts `.env.enc` back to `.env`
@@ -151,7 +151,7 @@ repository checkout by absolute host path. A current example is the `caddy`
 stack:
 
 ```yaml
-/srv/appdata/komodo/repos/homelab/caddy/Caddyfile
+/srv/appdata/komodo/repos/homelab/stacks/caddy/Caddyfile
 ```
 
 Using `KOMODO_REPO_NAME` keeps the path configurable if your Komodo checkout

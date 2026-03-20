@@ -2,12 +2,12 @@
 
 This document describes the dedicated Renovate and public-sync flow for
 `metabase/metabase` as used by the CrowdSec dashboard in
-[`../../../crowdsec`](../../../crowdsec/).
+[`../../../stacks/crowdsec`](../../../stacks/crowdsec/).
 
 ## Goal
 
 Metabase updates for the CrowdSec dashboard stack in
-[`../../../crowdsec`](../../../crowdsec/) should behave differently from the
+[`../../../stacks/crowdsec`](../../../stacks/crowdsec/) should behave differently from the
 rest of the Docker updates in this repository:
 
 - Renovate creates a PR instead of using branch automerge.
@@ -28,7 +28,7 @@ rest of the Docker updates in this repository:
 1. Renovate detects a new `metabase/metabase` tag or digest and creates a PR.
 2. The Renovate workflow dispatches `metabase-renovate-validate` for that PR.
 3. The workflow validates:
-   - only `crowdsec/compose.yaml` changed
+   - only `stacks/crowdsec/compose.yaml` changed
    - every changed image line is a `metabase/metabase` image line
    - the sanitized public export still builds successfully
 4. Renovate observes the green check on a later run and merges the PR.
@@ -42,7 +42,7 @@ rest of the Docker updates in this repository:
 The dedicated check is intentionally narrow. It validates the expected Metabase
 PR shape instead of trying to become a general Renovate CI framework.
 
-- The check targets Renovate PRs that touch `crowdsec/compose.yaml`.
+- The check targets Renovate PRs that touch `stacks/crowdsec/compose.yaml`.
 - It supports both direct `pull_request` triggers and explicit
   `workflow_dispatch` calls from the Renovate workflow.
 - It fails if the diff contains non-image changes or non-Metabase image changes.

@@ -1,0 +1,41 @@
+services:
+  caddy:
+    command: caddy docker-proxy
+    container_name: caddy
+    environment:
+      - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile # Caddyfile für externe Dienste
+      - CADDY_INGRESS_NETWORKS=smoonet # caddy-docker-proxy: Netzwerk für Routing
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - DOCKER_HOST=tcp://dockerproxy:2375 # Docker integration
+      - HOST_CONTAINERNAME=caddy
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.1@sha256:7acd0b8b6519f1cfa0ebf260ceefe0c7867cdd959e505df0fe8d882b03a18d1b
+    restart: unless-stopped
+    # Caddy Status-Seite unter caddy.example.com
+    labels:
+      - caddy_1.respond=200
+      - caddy_1.tls.dns=cloudflare {env.CLOUDFLARE_API_TOKEN}
+      - caddy_1.tls.resolvers=1.1.1.1 8.8.8.8
+      - caddy_1=${TRAEFIK_EXTERNAL_URL}
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/caddy.png
+    # Network
+    networks:
+      smoonet:
+    ports:
+      - "443:444"
+      - "443:444/udp"
+      - "80:81"
+      - "2019:2019"
+    volumes:
+      - /srv/appdata/caddy/config:/config
+      - /srv/appdata/caddy/data:/data
+      - /srv/appdata/caddy/site:/srv
+      - /srv/komodo/repos/homelab/stacks/caddy/Caddyfile:/etc/caddy/Caddyfile
+networks:
+  smoonet:
+    external: true
+volumes:
+  caddy_config:
+  caddy_data:

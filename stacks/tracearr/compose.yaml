@@ -33,8 +33,8 @@ services:
     volumes:
       - /srv/appdata/tracearr:/srv/appdata/tracearr:rw
       - /srv/appdata/tracearr:/data/tracearr
-      - tracearr_postgres:/data/postgres
-      - tracearr_redis:/data/redis
+      #- tracearr_postgres:/data/postgres
+      #- tracearr_redis:/data/redis
     ## Start Traefik Config
     labels:
       - traefik.enable=true

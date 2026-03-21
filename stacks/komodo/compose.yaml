@@ -59,8 +59,8 @@ services:
     # ports:
     #   - 27017:27017
     volumes:
-      - /srv/appdata/komodo/mongo-config:/data/db
-      - /srv/appdata/komodo/mongo-db:/data/configdb
+      - /mnt/user/appdata/komodo/mongo-config:/data/db
+      - /mnt/user/appdata/komodo/mongo-db:/data/configdb
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
@@ -124,9 +124,9 @@ services:
       ## Store dated backups of the database - https://komo.do/docs/setup/backup
       - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
       ## Store sync files on server
-      - /srv/appdata/komodo/syncs:/syncs
+      - /mnt/user/appdata/komodo/syncs:/syncs
       ## Optionally mount a custom core.config.toml
-      - /srv/appdata/komodo/config:/config
+      - /mnt/user/appdata/komodo/config:/config
       ## Allows for systemd Periphery connection at 
       ## "https://host.docker.internal:8120"
       # extra_hosts:
@@ -155,10 +155,10 @@ services:
       ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
       ## Default: /etc/komodo.
       - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
-      - /srv/appdata/komodo/repos:/etc/komodo/repos
-      - /srv/appdata/komodo/stacks:/etc/komodo/stacks
-      - /srv/appdata/komodo/builds:/etc/komodo/builds
-      - /srv/appdata/komodo/root:/root
+      - /mnt/user/appdata/komodo/repos:/etc/komodo/repos
+      - /mnt/user/appdata/komodo/stacks:/etc/komodo/stacks
+      - /mnt/user/appdata/komodo/builds:/etc/komodo/builds
+      - /mnt/user/appdata/komodo/root:/root
     networks:
       - smoonet
 

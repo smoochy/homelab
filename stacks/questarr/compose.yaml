@@ -12,7 +12,7 @@ services:
       - "5003:5000/tcp" # Homepage UI
     # Volumes
     volumes:
-      - /srv/appdata/questarr/data:/app/data
+      - /mnt/user/appdata/questarr/data:/app/data
     # Environment variables
     environment:
       - PGID=100

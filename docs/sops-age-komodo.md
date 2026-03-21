@@ -151,7 +151,7 @@ repository checkout by absolute host path. A current example is the `caddy`
 stack:
 
 ```yaml
-/srv/appdata/komodo/repos/homelab/stacks/caddy/Caddyfile
+/mnt/user/appdata/komodo/repos/homelab/stacks/caddy/Caddyfile
 ```
 
 Using `KOMODO_REPO_NAME` keeps the path configurable if your Komodo checkout

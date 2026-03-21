@@ -20,9 +20,9 @@ services:
       - "7600:80/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/FileBrowser-PNP/filebrowser.db:/database.db:rw
-      - /srv/appdata/FileBrowser-PNP:/config:rw
-      - /srv/appdata:/srv:rw
+      - /mnt/user/appdata/FileBrowser-PNP/filebrowser.db:/database.db:rw
+      - /mnt/user/appdata/FileBrowser-PNP:/config:rw
+      - /mnt/user/appdata:/srv:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true

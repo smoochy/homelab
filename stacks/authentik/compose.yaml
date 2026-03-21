@@ -18,7 +18,7 @@ services:
       - authentik
     restart: unless-stopped
     volumes:
-      - /srv/appdata/authentik/postgresql:/var/lib/postgresql/data
+      - /mnt/user/appdata/authentik/postgresql:/var/lib/postgresql/data
   server:
     command: server
     container_name: authentik
@@ -41,8 +41,8 @@ services:
     restart: unless-stopped
     shm_size: 512mb
     volumes:
-      - /srv/appdata/authentik/data:/data
-      - /srv/appdata/authentik/templates:/templates
+      - /mnt/user/appdata/authentik/data:/data
+      - /mnt/user/appdata/authentik/templates:/templates
     ## Start Traefik Config
     labels:
       - traefik.enable=true
@@ -97,9 +97,9 @@ services:
     shm_size: 512mb
     user: root
     volumes:
-      - /srv/appdata/authentik/certs:/certs
-      - /srv/appdata/authentik/data:/data
-      - /srv/appdata/authentik/templates:/templates
+      - /mnt/user/appdata/authentik/certs:/certs
+      - /mnt/user/appdata/authentik/data:/data
+      - /mnt/user/appdata/authentik/templates:/templates
 networks:
   authentik:
     internal: true

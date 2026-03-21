@@ -15,7 +15,7 @@ services:
       - "9105:8080" # Same container port, different external port (Prometheus etc.)
     # Volumes
     volumes:
-      - /srv/appdata/adguard-home-sync:/config # Contains adguardhome-sync.yaml [web:6][web:14]
+      - /mnt/user/appdata/adguard-home-sync:/config # Contains adguardhome-sync.yaml [web:6][web:14]
     # Environment variables
     environment:
       - CONFIGFILE=/config/adguard-home-sync.yaml
@@ -89,8 +89,8 @@ services:
 
     # Volumes
     volumes:
-      - /srv/appdata/adguard/config:/opt/adguardhome/conf
-      - /srv/appdata/adguard/workingdir:/opt/adguardhome/work
+      - /mnt/user/appdata/adguard/config:/opt/adguardhome/conf
+      - /mnt/user/appdata/adguard/workingdir:/opt/adguardhome/work
 
     # Resource limits
     deploy:

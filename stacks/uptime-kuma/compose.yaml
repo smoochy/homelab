@@ -14,7 +14,7 @@ services:
 
     # Volume mounts
     volumes:
-      - /srv/appdata/uptimekuma:/app/data
+      - /mnt/user/appdata/uptimekuma:/app/data
 
     # Environment variables
     environment:

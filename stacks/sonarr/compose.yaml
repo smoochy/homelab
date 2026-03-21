@@ -22,8 +22,8 @@ services:
       - "8989:8989/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/sonarr:/config:rw
-      - /srv/data:/data:rw
+      - /mnt/user/appdata/sonarr:/config:rw
+      - /mnt/user/data:/data:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true

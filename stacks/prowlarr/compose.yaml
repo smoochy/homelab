@@ -20,7 +20,7 @@ services:
       - "9696:9696/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/prowlarr:/config:rw
+      - /mnt/user/appdata/prowlarr:/config:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true

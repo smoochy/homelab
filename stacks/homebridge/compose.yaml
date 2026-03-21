@@ -20,7 +20,7 @@ services:
     pids_limit: 2048
     restart: unless-stopped
     volumes:
-      - /srv/appdata/homebridge:/homebridge:rw
+      - /mnt/user/appdata/homebridge:/homebridge:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true

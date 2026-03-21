@@ -31,8 +31,8 @@ services:
         hard: 65536
         soft: 65536
     volumes:
-      - /srv/appdata/tracearr:/srv/appdata/tracearr:rw
-      - /srv/appdata/tracearr:/data/tracearr
+      - /mnt/user/appdata/tracearr:/mnt/user/appdata/tracearr:rw
+      - /mnt/user/appdata/tracearr:/data/tracearr
       #- tracearr_postgres:/data/postgres
       #- tracearr_redis:/data/redis
     ## Start Traefik Config

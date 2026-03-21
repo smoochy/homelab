@@ -23,10 +23,10 @@ services:
       - "6061:8080/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/crowdsec/:/etc/crowdsec:rw
-      - /srv/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
-      - /srv/appdata/crowdsec:/var/log/crowdsec:rw
-      - /srv/appdata/traefik/logs/:/var/log/traefik:rw
+      - /mnt/user/appdata/crowdsec/:/etc/crowdsec:rw
+      - /mnt/user/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
+      - /mnt/user/appdata/crowdsec:/var/log/crowdsec:rw
+      - /mnt/user/appdata/traefik/logs/:/var/log/traefik:rw
       - /var/log/syslog:/syslog:ro
   crowdsec-dashboard:
     container_name: crowdsec-dashboard
@@ -48,8 +48,8 @@ services:
       - "3000:3000/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/crowdsec/dashboard/:/data/:rw
-      - /srv/appdata/crowdsec/data/:/metabase-data/:rw
+      - /mnt/user/appdata/crowdsec/dashboard/:/data/:rw
+      - /mnt/user/appdata/crowdsec/data/:/metabase-data/:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true
@@ -106,7 +106,7 @@ services:
       - no-new-privileges:true
     volumes:
       - /etc/localtime:/etc/localtime:ro
-      - /srv/appdata/crowdsec/bouncers/:/config:rw
+      - /mnt/user/appdata/crowdsec/bouncers/:/config:rw
   crowdsec-traefik-bouncer:
     container_name: crowdsec-traefik-bouncer
     depends_on:

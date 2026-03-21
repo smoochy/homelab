@@ -29,10 +29,10 @@ services:
       - "80:81"
       - "2019:2019"
     volumes:
-      - /srv/appdata/caddy/config:/config
-      - /srv/appdata/caddy/data:/data
-      - /srv/appdata/caddy/site:/srv
-      - /srv/komodo/repos/homelab/stacks/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - /mnt/user/appdata/caddy/config:/config
+      - /mnt/user/appdata/caddy/data:/data
+      - /mnt/user/appdata/caddy/site:/srv
+      - /mnt/user/appdata/komodo/repos/homelab/stacks/caddy/Caddyfile:/etc/caddy/Caddyfile
 networks:
   smoonet:
     external: true

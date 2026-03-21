@@ -12,7 +12,7 @@ services:
       - "8084:8080/tcp" # Dozzle UI
     # Volumes
     volumes:
-      - /srv/appdata/dozzle/:/data:rw # Persistent data [web:56]
+      - /mnt/user/appdata/dozzle/:/data:rw # Persistent data [web:56]
     # Environment variables
     environment:
       - DOZZLE_AUTH_PROVIDER=simple

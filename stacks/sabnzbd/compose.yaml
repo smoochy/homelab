@@ -21,7 +21,7 @@ services:
     cap_add:
       - NET_ADMIN
     volumes:
-      - /srv/appdata/gluetun:/gluetun
+      - /mnt/user/appdata/gluetun:/gluetun
 
     # Environment variables
     # Generic host info
@@ -143,9 +143,9 @@ services:
     network_mode: "container:gluetun" # Uses gluetun's network namespace [web:38][web:54]
     # Volumes
     volumes:
-      - /srv/appdata/sabnzbd/scripts:/scripts # Custom scripts [web:53]
-      - /srv/appdata/sabnzbd:/config # App config [web:53]
-      - /srv/data/:/data/ # Downloads/incomplete
+      - /mnt/user/appdata/sabnzbd/scripts:/scripts # Custom scripts [web:53]
+      - /mnt/user/appdata/sabnzbd:/config # App config [web:53]
+      - /mnt/user/data/:/data/ # Downloads/incomplete
     # Environment variables
     environment:
       - HOST_CONTAINERNAME=sabnzbd

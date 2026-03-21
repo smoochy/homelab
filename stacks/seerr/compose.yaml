@@ -54,7 +54,7 @@ services:
       - 5055:5055
     restart: unless-stopped
     volumes:
-      - /srv/appdata/seerr/config:/app/config
+      - /mnt/user/appdata/seerr/config:/app/config
 networks:
   smoonet:
     external: true

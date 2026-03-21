@@ -22,7 +22,7 @@ services:
     volumes:
       - /etc/machine-id:/etc/machine-id:ro
       - /mnt/disk1:/storage/1:ro
-      - /srv/appdata/Notifiarr:/config:rw
+      - /mnt/user/appdata/Notifiarr:/config:rw
       - /var/run/utmp:/var/run/utmp:ro
     ## Start Traefik Config
     labels:

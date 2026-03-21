@@ -57,9 +57,9 @@ services:
 
     # Persistent state
     volumes:
-      - /srv/appdata/apprise/attach:/attach
-      - /srv/appdata/apprise/config:/config
-      - /srv/appdata/apprise/plugin:/plugin
+      - /mnt/user/appdata/apprise/attach:/attach
+      - /mnt/user/appdata/apprise/config:/config
+      - /mnt/user/appdata/apprise/plugin:/plugin
 
     # Ephemeral runtime and temp files
     tmpfs:

@@ -54,7 +54,7 @@ services:
       - "5000:5000/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/changedetection:/datastore:rw
+      - /mnt/user/appdata/changedetection:/datastore:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true

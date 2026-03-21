@@ -12,7 +12,7 @@ services:
       - "8003:1000/tcp" # Web UI
     # Volumes
     volumes:
-      - /srv/appdata/speedtest-tracker:/config:rw # Config & data [web:58]
+      - /mnt/user/appdata/speedtest-tracker:/config:rw # Config & data [web:58]
     # Environment variables
     environment:
       - HOST_CONTAINERNAME=speedtest-tracker

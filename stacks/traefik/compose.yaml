@@ -21,7 +21,7 @@ services:
       - "81:81/tcp" # Additional HTTP
     # Volumes
     volumes:
-      - /srv/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
+      - /mnt/user/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
       - /var/run/docker.sock:/var/run/docker.sock
 
     # Environment variables
@@ -79,7 +79,7 @@ services:
 
     # Volumes
     volumes:
-      - /srv/appdata/traefik-dashboard/data/geoip/:/usr/share/GeoIP:rw
+      - /mnt/user/appdata/traefik-dashboard/data/geoip/:/usr/share/GeoIP:rw
 
     # Environment variables
     environment:
@@ -116,8 +116,8 @@ services:
       - "5101:3000/tcp" # Dashboard UI
     # Volumes
     volumes:
-      - /srv/appdata/traefik-dashboard/data/dashboard/:/data:rw
-      - /srv/appdata/traefik-dashboard/data/geoip/:/geoip:ro
+      - /mnt/user/appdata/traefik-dashboard/data/dashboard/:/data:rw
+      - /mnt/user/appdata/traefik-dashboard/data/geoip/:/geoip:ro
 
     # Environment variables
     environment:
@@ -186,8 +186,8 @@ services:
 
     # Volumes
     volumes:
-      - /srv/appdata/traefik-dashboard/data/positions/:/data:rw
-      - /srv/appdata/traefik/logs/:/logs:ro
+      - /mnt/user/appdata/traefik-dashboard/data/positions/:/data:rw
+      - /mnt/user/appdata/traefik/logs/:/logs:ro
 
     # Environment variables
     environment:

@@ -23,7 +23,7 @@ services:
       - "9001:9001/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/mosquitto:/config:rw
+      - /mnt/user/appdata/mosquitto:/config:rw
 networks:
   smoonet:
     external: true

@@ -12,10 +12,10 @@ services:
       - "5002:5002/tcp" # Episeerr UI (non-standard port!)
     # Volumes
     volumes:
-      - /srv/appdata/episeerr/config:/app/config:rw
-      - /srv/appdata/episeerr/data:/app/data:rw
-      - /srv/appdata/episeerr/logs:/app/logs:rw
-      - /srv/appdata/episeerr/temp:/app/temp:rw
+      - /mnt/user/appdata/episeerr/config:/app/config:rw
+      - /mnt/user/appdata/episeerr/data:/app/data:rw
+      - /mnt/user/appdata/episeerr/logs:/app/logs:rw
+      - /mnt/user/appdata/episeerr/temp:/app/temp:rw
 
     # Environment variables
     environment:

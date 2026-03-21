@@ -18,9 +18,9 @@ services:
       - "5001:5000/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/registry/auth:/auth:rw
-      - /srv/appdata/registry/config/config.yml:/etc/distribution/config.yml:ro
-      - /srv/appdata/registry/data:/var/lib/registry:rw
+      - /mnt/user/appdata/registry/auth:/auth:rw
+      - /mnt/user/appdata/registry/config/config.yml:/etc/distribution/config.yml:ro
+      - /mnt/user/appdata/registry/data:/var/lib/registry:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true
@@ -68,8 +68,8 @@ services:
       - "8002:8000/tcp"
     restart: unless-stopped
     volumes:
-      - /srv/appdata/registry-ui/config/config.yml:/opt/config.yml:ro
-      - /srv/appdata/registry-ui/data:/opt/data:rw
+      - /mnt/user/appdata/registry-ui/config/config.yml:/opt/config.yml:ro
+      - /mnt/user/appdata/registry-ui/data:/opt/data:rw
     ## Start Traefik Config
     labels:
       - traefik.enable=true

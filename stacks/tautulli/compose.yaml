@@ -14,7 +14,7 @@ services:
       - "8181:8181" # Tautulli Web UI [web:24][web:29]
     # Volumes
     volumes:
-      - /srv/appdata/tautulli:/config # Persistent config [web:24]
+      - /mnt/user/appdata/tautulli:/config # Persistent config [web:24]
     # Environment variables
     environment:
       - HOST_CONTAINERNAME=tautulli

@@ -12,7 +12,7 @@ services:
       - "3003:3000/tcp" # Homepage UI
     # Volumes
     volumes:
-      - /srv/appdata/homepage/config:/app/config:rw # config.yml, services.yml [web:57]
+      - /mnt/user/appdata/homepage/config:/app/config:rw # config.yml, services.yml [web:57]
     # Environment variables
     environment:
       - DOCKER_HOST=tcp://dockerproxy:2375 # Docker integration

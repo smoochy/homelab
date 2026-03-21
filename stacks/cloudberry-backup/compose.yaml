@@ -54,8 +54,8 @@ services:
     volumes:
       - ./hooks/56-cloudberry-icon-perms.sh:/etc/cont-init.d/56-cloudberry-icon-perms.sh:ro
       - ./hooks/95-cloudberry-icon-perms-restore.sh:/etc/cont-finish.d/95-cloudberry-icon-perms-restore.sh:ro
-      - /srv/appdata/CloudBerryBackup:/config:rw
-      - /srv/backups:/storage:ro
+      - /mnt/user/appdata/CloudBerryBackup:/config:rw
+      - /mnt/user/backups:/storage:ro
     ## Start Traefik Config
     labels:
       - traefik.enable=true

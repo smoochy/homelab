@@ -3,7 +3,7 @@ services:
     container_name: yamtrack-redis
     environment:
       - SECRET=${SECRET}
-    image: redis:8.6.1-alpine3.23@sha256:2afba59292f25f5d1af200496db41bea2c6c816b059f57ae74703a50a03a27d0
+    image: redis:8.6.2-alpine3.23@sha256:81b6f81d6a6c5b9019231a2e8eb10085e3a139a34f833dcc965a8a959b040b72
     labels:
       - com.smoochy.komodo.restore_stack=yamtrack
     restart: unless-stopped

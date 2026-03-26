@@ -68,8 +68,9 @@ services:
       - smoonet
 
   core:
-    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-latest}
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-2}
     container_name: komodo-core
+    init: true
     labels:
       # Prevent Komodo from stopping with StopAllContainers
       - komodo.skip=true
@@ -127,6 +128,8 @@ services:
       - /mnt/user/appdata/komodo/syncs:/syncs
       ## Optionally mount a custom core.config.toml
       - /mnt/user/appdata/komodo/config:/config
+      # Komodo Core v2 requires the keys directory to be mounted at /config/keys, even if it's empty.
+      - /mnt/user/appdata/komodo/config/keys:/config/keys
       ## Allows for systemd Periphery connection at 
       ## "https://host.docker.internal:8120"
       # extra_hosts:
@@ -135,7 +138,7 @@ services:
       ## or deploy the Periphery binary with systemd using 
       ## https://github.com/moghtech/komodo/tree/main/scripts
   periphery:
-    image: ghcr.io/smoochy/komodo-periphery-sops-age:latest
+    image: ghcr.io/smoochy/komodo-periphery-sops-age:2
     container_name: komodo-periphery
     labels:
       - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
@@ -149,6 +152,8 @@ services:
       - PERIPHERY_STACK_DIR=/etc/komodo/stacks
       - PERIPHERY_BUILD_DIR=/etc/komodo/builds
     volumes:
+      ## Attach the Core / Periphery communication keys
+      - /mnt/user/appdata/komodo/config/keys:/config/keys
       - /proc:/proc
       ## Specify the Periphery agent root directory.
       ## Must be the same inside and outside the container,
@@ -166,6 +171,8 @@ volumes:
   # Mongo
   mongo-data:
   mongo-config:
+  # Komodo Core v2
+  keys:
 
 
 networks:

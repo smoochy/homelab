@@ -2,6 +2,7 @@ services:
   crowdsec:
     container_name: crowdsec
     environment:
+      - BOUNCER_KEY_TRAEFIK=${CROWDSEC_TRAEFIK_BOUNCER_API_KEY}
       - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors
       - GID=98
       - HOST_CONTAINERNAME=crowdsec
@@ -94,7 +95,7 @@ services:
       - HOST_OS=Unraid
       - PORT=8080
       - TRAEFIK_CONTAINER_NAME=traefik
-      - TRAEFIK_DYNAMIC_CONFIG=/etc/traefik/dynamic.yml
+      - TRAEFIK_DYNAMIC_CONFIG=/etc/traefik/rules/crowdsec-manager.yml
       - TRAEFIK_STATIC_CONFIG=/etc/traefik/traefik.yml
       - TZ=Europe/Berlin
     image: ghcr.io/hhftechnology/crowdsec_manager:2.2.0@sha256:68e5d5625305215abd0153002a8a2c7e7dd494c097dfbc24bb2ea2b7b0229509
@@ -138,7 +139,7 @@ services:
       - /mnt/user/appdata/crowdsec/manager/backups/:/app/backups:rw
       - /mnt/user/appdata/crowdsec/manager/config/:/app/config:rw
       - /mnt/user/appdata/crowdsec/manager/data/:/app/data:rw
-      - /mnt/user/appdata/traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
+      - /mnt/user/appdata/traefik/rules/crowdsec-manager.yml:/etc/traefik/rules/crowdsec-manager.yml:rw
       - /mnt/user/appdata/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
   crowdsec-firewall-bouncer:
     cap_add:
@@ -166,28 +167,6 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /mnt/user/appdata/crowdsec/bouncers/:/config:rw
-  crowdsec-traefik-bouncer:
-    container_name: crowdsec-traefik-bouncer
-    depends_on:
-      - crowdsec
-    environment:
-      - CROWDSEC_AGENT_HOST=crowdsec:8080
-      - CROWDSEC_BOUNCER_API_KEY=${CROWDSEC_BOUNCER_API_KEY}
-      - CROWDSEC_BOUNCER_LOG_LEVEL=1
-      - GIN_MODE=release
-      - HOST_CONTAINERNAME=crowdsec-traefik-bouncer
-      - HOST_HOSTNAME=homelab-host
-      - HOST_OS=Unraid
-      - TRUSTED_PROXIES=192.0.2.0/24,127.0.0.1,172.19.0.0/24,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32
-      - TZ=Europe/Berlin
-    image: ghcr.io/freifunkmuc/traefik-crowdsec-bouncer:v0.6.1@sha256:e88f9b7bfdd397c5890d38f3af9d3e0aa7db74a7c649949b9028b2dc05669f5a
-    labels:
-      - com.smoochy.komodo.restore_stack=crowdsec
-      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
-    networks:
-      - smoonet
-    pids_limit: 2048
-    restart: unless-stopped
 networks:
   smoonet:
     external: true

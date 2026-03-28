@@ -35,7 +35,12 @@ Renovate `stability-days`:
 The `pr-age-gate` workflow refreshes those statuses on PR events and on a
 schedule. The `timed-pr-automerge` workflow evaluates all non-preview PRs and
 merges them only when the current head SHA is at least 5 days old, the PR is
-mergeable, all checks are green, and no human review blocker remains.
+mergeable, all merge-relevant checks are green, and no human review blocker
+remains.
+
+`pr-age-gate` concurrency is isolated per PR for `pull_request` runs and per
+ref for scheduled or manual runs so parallel Renovate PRs do not cancel each
+other's check runs.
 
 The published `renovate.yaml` keeps the same path and file name, but its
 triggers are intentionally set to a non-matching branch and the job is guarded

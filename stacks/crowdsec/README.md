@@ -12,7 +12,6 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - `crowdsec-dashboard`
 - `crowdsec-manager`
 - `crowdsec-firewall-bouncer`
-- `crowdsec-traefik-bouncer`
 
 ## Upstream
 
@@ -36,7 +35,10 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - Website: [https://github.com/shgew/cs-firewall-bouncer-docker](https://github.com/shgew/cs-firewall-bouncer-docker)
 - GitHub: [https://github.com/shgew/cs-firewall-bouncer-docker](https://github.com/shgew/cs-firewall-bouncer-docker)
 
-### `crowdsec-traefik-bouncer`
+## Traefik Integration
 
-- Website: [https://github.com/freifunkMUC/traefik-crowdsec-bouncer](https://github.com/freifunkMUC/traefik-crowdsec-bouncer)
-- GitHub: [https://github.com/freifunkMUC/traefik-crowdsec-bouncer](https://github.com/freifunkMUC/traefik-crowdsec-bouncer)
+The Traefik remediation path is handled by the official `crowdsec-bouncer-traefik-plugin` inside the [`traefik`](../traefik/README.md) stack.
+
+- `CROWDSEC_TRAEFIK_BOUNCER_API_KEY` is shared with the Traefik stack.
+- The `crowdsec` service registers that key through `BOUNCER_KEY_TRAEFIK`.
+- No standalone Traefik bouncer container is used in this stack anymore.

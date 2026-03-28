@@ -22,7 +22,6 @@ services:
     # Volumes
     volumes:
       - /mnt/user/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
-      - /var/run/docker.sock:/var/run/docker.sock
 
     # Environment variables
     environment:
@@ -40,6 +39,13 @@ services:
     ## Start Traefik Config
     labels:
       - traefik.enable=true
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.enabled=true
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.crowdsecmode=stream
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.crowdseclapischeme=http
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.crowdseclapihost=crowdsec:8080
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.crowdseclapipath=/
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.crowdseclapikey=${CROWDSEC_TRAEFIK_BOUNCER_API_KEY}
+      - traefik.http.middlewares.crowdsec-bouncer.plugin.bouncer.forwardedheaderstrustedips=${CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS}
       # # Internal
       - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
       - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
@@ -100,6 +106,73 @@ services:
     labels:
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://raw.githubusercontent.com/tritones/unraid-templates/main/templates/img/geoipupdate.png
+  traefik-middleware-manager:
+    container_name: traefik-middleware-manager
+    image: hhftechnology/middleware-manager:v4.5.0@sha256:96099c3e069f24800e9b7f8ffa43e359b90c54d73961681825fd51d3cfdc1e49
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "3456:3456/tcp" # Middleware Manager UI
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik/middleware-manager/data:/data:rw
+      - /mnt/user/appdata/traefik/middleware-manager/config:/app/config:rw
+      - /mnt/user/appdata/traefik/rules:/conf:rw
+      - /mnt/user/appdata/traefik:/etc/traefik:rw
+
+    # Environment variables
+    environment:
+      - ACTIVE_DATA_SOURCE=traefik
+      - DB_PATH=/data/middleware.db
+      - HOST_CONTAINERNAME=${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PORT=3456
+      - TRAEFIK_API_URL=http://traefik:8080
+      - TRAEFIK_CONF_DIR=/conf
+      - TRAEFIK_STATIC_CONFIG_PATH=/etc/traefik/traefik.yml
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-internal.rule=Host(`${TRAEFIK_MIDDLEWARE_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-internal.service=${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-external.priority=10
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-external.rule=Host(`${TRAEFIK_MIDDLEWARE_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-external.service=${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-bypass.rule=Host(`${TRAEFIK_MIDDLEWARE_MANAGER_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-bypass.service=${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}-bypass.tls=true
+      # Service port (Middleware Manager runs on 3456)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}.loadbalancer.server.url=${TRAEFIK_MIDDLEWARE_MANAGER_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/hhftechnology.png
+      - net.unraid.docker.webui=${TRAEFIK_MIDDLEWARE_MANAGER_INTERNAL_URL}
   traefik-log-dashboard:
     container_name: traefik-log-dashboard
     depends_on:

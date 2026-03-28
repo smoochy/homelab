@@ -126,6 +126,9 @@ entryPoints:
 
 experimental:
   plugins:
+    bouncer:
+      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+      version: v1.5.1
     traefikwarp:
       moduleName: github.com/l4rm4nd/traefik-warp
       version: v1.1.5   # Or latest version from Plugin-Store
@@ -153,5 +156,8 @@ providers:
     exposedByDefault: false
     network: "smoonet"
   file:
-    filename: "/etc/traefik/dynamic.yml"
+    directory: "/etc/traefik/rules"
     watch: true
+  http:
+    endpoint: "http://traefik-middleware-manager:3456/api/v1/traefik-config"
+    pollInterval: 5s

@@ -21,6 +21,22 @@ automerge behavior, scheduling, and branch handling.
 In this repository, Renovate is used for the `image: repo:tag@sha256:...`
 pattern that the stack definitions follow.
 
+The repository now owns the effective PR wait timers instead of relying on
+Renovate `stability-days`:
+
+- `repo/pr-head-age-anchor` records the first-seen timestamp for the current
+  PR head SHA
+- `renovate/docker-pr-age-24h` turns green once that current head SHA has
+  aged at least 24 hours
+- head-SHA changes reset both timers because a new head commit receives a new
+  anchor
+- metadata-only PR edits do not reset the timers
+
+The `pr-age-gate` workflow refreshes those statuses on PR events and on a
+schedule. The `timed-pr-automerge` workflow evaluates all non-preview PRs and
+merges them only when the current head SHA is at least 5 days old, the PR is
+mergeable, all checks are green, and no human review blocker remains.
+
 The published `renovate.yaml` keeps the same path and file name, but its
 triggers are intentionally set to a non-matching branch and the job is guarded
 with `if: ${{ false }}` so it remains a reference copy only.
@@ -34,6 +50,8 @@ Metabase uses a narrower flow than the rest of the Renovate-managed images.
 - That PR stays bot-driven and is not assigned to `smoochy`.
 - A dedicated GitHub Actions check validates that the PR is a Metabase-only
   image/digest update and that the public export still builds.
+- The repository-owned `renovate/docker-pr-age-24h` status enforces the rolling
+  24-hour wait on the current PR head SHA.
 - The Renovate workflow explicitly dispatches that validation because PR events
   created by the workflow token do not automatically fan out into another
   workflow run.

@@ -15,6 +15,8 @@ rest of the Docker updates in this repository:
   `smoochy`.
 - A dedicated check verifies that the PR is only the expected Metabase image
   update and that the public export still builds.
+- A repository-owned rolling status check waits until the current PR head SHA
+  has aged at least 24 hours.
 - Because Renovate itself runs inside GitHub Actions, that validation workflow
   is dispatched explicitly from the Renovate job instead of relying on a
   follow-up PR event from `GITHUB_TOKEN`.
@@ -27,14 +29,17 @@ rest of the Docker updates in this repository:
 
 1. Renovate detects a new `metabase/metabase` tag or digest and creates a PR.
 2. The Renovate workflow dispatches `metabase-renovate-validate` for that PR.
-3. The workflow validates:
+3. The `pr-age-gate` workflow ensures the current PR head SHA has both:
+   - `repo/pr-head-age-anchor`
+   - `renovate/docker-pr-age-24h`
+4. The validation workflow validates:
    - only `stacks/crowdsec/compose.yaml` changed
    - every changed image line is a `metabase/metabase` image line
    - the sanitized public export still builds successfully
-4. Renovate observes the green check on a later run and merges the PR.
-5. The merge to private `main` is picked up by `public-preview`, either via the
+5. Renovate observes the green checks on a later run and merges the PR.
+6. The merge to private `main` is picked up by `public-preview`, either via the
    normal `push` trigger or via the dedicated post-`renovate` workflow trigger.
-6. If the merge is a Metabase-only image update, the public export is committed
+7. If the merge is a Metabase-only image update, the public export is committed
    directly to the public repo `main`.
 
 ## Validation Scope
@@ -48,6 +53,8 @@ PR shape instead of trying to become a general Renovate CI framework.
 - It fails if the diff contains non-image changes or non-Metabase image changes.
 - It reuses the same export scripts that power the public mirror workflow so
   the merge gate reflects the real publish path.
+- The PR head-age timer resets whenever Renovate updates the PR head SHA with a
+  new commit, rebase, or force-push.
 
 ## Notifications
 
@@ -63,6 +70,8 @@ The silent behavior only applies to Metabase automation inside this repository.
 
 - PR creation: Renovate raises a normal PR for Metabase.
 - Silent PR: the PR is bot-authored and not assigned to `smoochy`.
+- Head-age gate: the PR stays pending until the current head SHA is at least
+  24 hours old.
 - Validation success: the dedicated check passes for a valid image/digest-only
   Metabase update.
 - Automerge: Renovate merges the PR on the next run after the check turns

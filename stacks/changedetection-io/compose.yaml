@@ -17,7 +17,7 @@ services:
       - TIMEOUT=300000
       - TOKEN=${BROWSERLESS_TOKEN}
       - TZ=Europe/Berlin
-    image: ghcr.io/browserless/chromium:v2.44.0@sha256:2bd6951670a44a797f54ca3d4a977b324d98e4158cd84e847ec7c8c3ed27097e
+    image: ghcr.io/browserless/chromium:v2.46.0@sha256:7754b85d822000a15df9bfcc9872016bd163384f3c223e2f4b5971f0a5e9c038
     networks:
       smoonet:
     ports:
@@ -47,7 +47,7 @@ services:
       - LOGGER_LEVEL=
       - PLAYWRIGHT_DRIVER_URL=${CHANGEDETECTION_PLAYWRIGHT_DRIVER_URL}
       - TZ=Europe/Berlin
-    image: dgtlmoon/changedetection.io:0.54.6@sha256:7611738e564caa08a9b7591a7909e4f6c78d34d289873b9fd7d320af50943419
+    image: dgtlmoon/changedetection.io:0.54.7@sha256:b632a9fb6be702fb859e02cd5cac5de7a7466ce1e97f5f5347a1d012c0720108
     networks:
       smoonet:
     ports:

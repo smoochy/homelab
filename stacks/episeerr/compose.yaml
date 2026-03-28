@@ -1,7 +1,7 @@
 services:
   episeerr:
     container_name: episeerr
-    image: vansmak/episeerr:3.4.0@sha256:cb25eca8da479f1eec61b8f99d49dd8b64721dd65524aa54751653d741924674
+    image: vansmak/episeerr:3.5.1@sha256:ef57d10f04f5e7734b513d8f99841e4e7c2431ce5666defb033c05ac42d154ef
     restart: unless-stopped
 
     # Network

@@ -81,6 +81,65 @@ services:
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
       - net.unraid.docker.webui=http://192.0.2.99:3000
+  crowdsec-manager:
+    container_name: crowdsec-manager
+    depends_on:
+      - crowdsec
+    environment:
+      - CROWDSEC_METRICS_URL=http://crowdsec:6060/metrics
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - ENVIRONMENT=production
+      - HOST_CONTAINERNAME=${CROWDSEC_MANAGER_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PORT=8080
+      - TRAEFIK_CONTAINER_NAME=traefik
+      - TRAEFIK_DYNAMIC_CONFIG=/etc/traefik/dynamic.yml
+      - TRAEFIK_STATIC_CONFIG=/etc/traefik/traefik.yml
+      - TZ=Europe/Berlin
+    image: ghcr.io/hhftechnology/crowdsec_manager:2.2.0@sha256:68e5d5625305215abd0153002a8a2c7e7dd494c097dfbc24bb2ea2b7b0229509
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.rule=Host(`${CROWDSEC_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.service=${CROWDSEC_MANAGER_SERVICE}
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.priority=10
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.rule=Host(`${CROWDSEC_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.service=${CROWDSEC_MANAGER_SERVICE}
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.rule=Host(`${CROWDSEC_MANAGER_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.service=${CROWDSEC_MANAGER_SERVICE}
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.tls=true
+      # Service port (must match the port the manager listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${CROWDSEC_MANAGER_SERVICE}.loadbalancer.server.url=${CROWDSEC_MANAGER_INTERNAL_URL}
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+      - net.unraid.docker.webui=${CROWDSEC_MANAGER_INTERNAL_URL}
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "6062:8080/tcp"
+    restart: unless-stopped
+    volumes:
+      - ./compose.yaml:/app/docker-compose.yml:ro
+      - /mnt/user/appdata/crowdsec/manager/backups/:/app/backups:rw
+      - /mnt/user/appdata/crowdsec/manager/config/:/app/config:rw
+      - /mnt/user/appdata/crowdsec/manager/data/:/app/data:rw
+      - /mnt/user/appdata/traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
+      - /mnt/user/appdata/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
   crowdsec-firewall-bouncer:
     cap_add:
       - NET_ADMIN

@@ -108,7 +108,7 @@ services:
       - net.unraid.docker.icon=https://raw.githubusercontent.com/tritones/unraid-templates/main/templates/img/geoipupdate.png
   traefik-middleware-manager:
     container_name: traefik-middleware-manager
-    image: hhftechnology/middleware-manager:v4.5.0@sha256:96099c3e069f24800e9b7f8ffa43e359b90c54d73961681825fd51d3cfdc1e49
+    image: hhftechnology/middleware-manager:v4.5.0@sha256:83b055b4b5700799f1f3bb8d0b2a729a113dd3c281e7e478df55c79a4ee27384
     restart: unless-stopped
 
     # Network

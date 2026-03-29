@@ -15,6 +15,6 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - Website: [https://radarr.video/](https://radarr.video/)
 - GitHub: [https://github.com/Radarr/Radarr](https://github.com/Radarr/Radarr)
 
-## Related Links
+## Scripts
 
-- Related automation: auto_tag: [https://github.com/smoochy/homelab-automation-scripts/tree/main/media/radarr/auto_tag](https://github.com/smoochy/homelab-automation-scripts/tree/main/media/radarr/auto_tag)
+- [Auto Tag and Deferred Cleanup for Watched Movies](./scripts/auto_tag/README.md): Tautulli-driven watched-state handling and deferred Radarr cleanup for movie files.

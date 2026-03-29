@@ -26,6 +26,7 @@ workflow too.
 - [Background](#background)
 - [What This Repository Contains](#what-this-repository-contains)
 - [Stack Coverage](#stack-coverage)
+- [Automation Scripts](#automation-scripts)
 - [Repository Layout](#repository-layout)
 - [Using This Repository as a Base](#using-this-repository-as-a-base)
 - [Companion Repositories](#companion-repositories)
@@ -78,6 +79,27 @@ The repository currently spans several homelab areas:
 Not every stack is required. The repository is modular, so individual stacks
 can be used independently or as part of a narrower deployment scope.
 
+## Automation Scripts
+
+Some stacks also include focused helper scripts under
+[`stacks/<stack>/scripts/`](./stacks). These cover small operational workflows
+such as post-processing, state handling, queue cleanup, and maintenance
+automation that are tied to a concrete service stack.
+
+Current published script areas:
+
+- `Radarr`:
+  [Auto Tag and Deferred Cleanup for Watched Movies](./stacks/radarr/scripts/auto_tag/README.md)
+- `SABnzbd + Gluetun`:
+  [Download Speed Monitor and Recovery Script](./stacks/sabnzbd/scripts/monitor_sab_speed/README.md),
+  [ISO Extractor Post-Processing Script](./stacks/sabnzbd/scripts/extract_iso/README.md),
+  [Delete Items From History Scripts](./stacks/sabnzbd/scripts/delete_item_from_history/README.md)
+- `Uptime Kuma`:
+  [Appdata Backup Uptime Kuma Maintenance Helper](./stacks/uptime-kuma/scripts/appdata_backup_kuma_maintenance/README.md)
+
+Each script keeps its own `README.md`, changelog, and any script-specific
+assets or example files next to the implementation.
+
 ## Repository Layout
 
 The layout is built to be easy to navigate:
@@ -114,8 +136,6 @@ This structure is useful when the deployment needs:
 
 ## Companion Repositories
 
-- [homelab-automation-scripts](https://github.com/smoochy/homelab-automation-scripts):
-  task-focused helper scripts for media and host operations
 - [komodo-periphery-sops-age](https://github.com/smoochy/komodo-periphery-sops-age):
   Komodo Periphery image with `sops` and `age` preinstalled
 - [caddy-modules](https://github.com/smoochy/caddy-modules):

@@ -48,7 +48,7 @@ entryPoints:
     forwardedHeaders:
       trustedIPs:
         # BEGIN CLOUDFLARE IPs (managed by script)
-        # The update script for this list will be published in https://github.com/smoochy/homelab-automation-scripts
+        # Replace this managed block with your own update workflow if you want to automate the list.
         # Cloudflare IPv4
         - "173.245.48.0/20"
         - "103.21.244.0/22"

@@ -46,6 +46,21 @@ The published `renovate.yaml` keeps the same path and file name, but its
 triggers are intentionally set to a non-matching branch and the job is guarded
 with `if: ${{ false }}` so it remains a reference copy only.
 
+## Public Mirror Preview and Publish
+
+The public mirror automation now has three behaviors:
+
+- image-only compose updates can still publish directly
+- general public-export changes still use the shared technical preview PR plus
+  manual `/publish`
+- the isolated Traefik env-sync path creates its own technical preview PR and
+  then auto-publishes it immediately
+
+That Traefik-specific path is limited to pushes that only update
+`stacks/traefik/.env.enc` and `stacks/traefik/.env.example`. It uses its own
+preview branches so it never publishes unrelated pending changes from the
+general public preview flow.
+
 ## Metabase
 
 Metabase uses a narrower flow than the rest of the Renovate-managed images.

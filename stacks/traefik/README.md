@@ -41,11 +41,16 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - Website: [https://github.com/hhftechnology/traefik-log-dashboard-agent](https://github.com/hhftechnology/traefik-log-dashboard-agent)
 - GitHub: [https://github.com/hhftechnology/traefik-log-dashboard-agent](https://github.com/hhftechnology/traefik-log-dashboard-agent)
 
+## Scripts
+
+- [Cloudflare Trusted IP Sync and Config Backup Script](./scripts/cloudflare_trusted_ips/README.md): Host-side helper that refreshes Cloudflare trusted IPs, republishes the matching Traefik env artifacts, and creates dated backups of `traefik.yml` and `dynamic.yml` before each run.
+
 ## Config Layout
 
 - `traefik.yml` loads the file provider from `dynamic.yml` and keeps the HTTP provider endpoint for `traefik-middleware-manager`.
 - `dynamic.yml` stores the repo-managed baseline middlewares, routers, and services for the single-file setup.
 - `traefik-middleware-manager` stays in the stack in API-only mode.
+- `scripts/cloudflare_trusted_ips` stores the host-side automation that refreshes the managed Cloudflare IP block, republishes the matching `CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS` value through `stacks/traefik/.env.enc` and `stacks/traefik/.env.example`, and creates dated backups of `traefik.yml` and `dynamic.yml` under `/mnt/user/appdata/traefik/backups` before each run.
 ## CrowdSec Plugin
 
 This stack uses the official CrowdSec Traefik plugin for edge remediation instead of a dedicated forward-auth sidecar container.

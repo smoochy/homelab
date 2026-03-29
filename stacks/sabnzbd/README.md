@@ -23,11 +23,11 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - Website: [https://sabnzbd.org/](https://sabnzbd.org/)
 - GitHub: [https://github.com/sabnzbd/sabnzbd](https://github.com/sabnzbd/sabnzbd)
 
-## Related Links
+## Scripts
 
-- Related automation: monitor_sab_speed: [https://github.com/smoochy/homelab-automation-scripts/tree/main/media/sabnzbd/monitor_sab_speed](https://github.com/smoochy/homelab-automation-scripts/tree/main/media/sabnzbd/monitor_sab_speed)
-- Related automation: extract_iso: [https://github.com/smoochy/homelab-automation-scripts/tree/main/media/sabnzbd/extract_iso](https://github.com/smoochy/homelab-automation-scripts/tree/main/media/sabnzbd/extract_iso)
-- Related automation: delete_item_from_history: [https://github.com/smoochy/homelab-automation-scripts/tree/main/media/sabnzbd/delete_item_from_history](https://github.com/smoochy/homelab-automation-scripts/tree/main/media/sabnzbd/delete_item_from_history)
+- [Download Speed Monitor and Recovery Script](./scripts/monitor_sab_speed/README.md): Host-side throughput monitoring with controlled recovery paths for slow SABnzbd runs.
+- [ISO Extractor Post-Processing Script](./scripts/extract_iso/README.md): SABnzbd post-processing helper that extracts ISO payloads and removes the source image afterwards.
+- [Delete Items From History Scripts](./scripts/delete_item_from_history/README.md): Queue-based cleanup helpers for selected SABnzbd history categories.
 
 ## Komodo Notes
 

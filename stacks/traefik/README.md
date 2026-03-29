@@ -43,15 +43,15 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 ## Config Layout
 
-- `traefik.yml` now loads file-provider rules from `rules/` and HTTP-provider overrides from `traefik-middleware-manager`.
-- `rules/base.yml` stores the repo-managed baseline middlewares, routers, and services.
-- `rules/crowdsec-manager.yml` is reserved for CrowdSec manager generated Traefik changes.
+- `traefik.yml` loads the file provider from `dynamic.yml` and keeps the HTTP provider endpoint for `traefik-middleware-manager`.
+- `dynamic.yml` stores the repo-managed baseline middlewares, routers, and services for the single-file setup.
+- `traefik-middleware-manager` stays in the stack in API-only mode.
 ## CrowdSec Plugin
 
 This stack uses the official CrowdSec Traefik plugin for edge remediation instead of a dedicated forward-auth sidecar container.
 
 - `traefik.yml` registers the experimental plugin `github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin`.
 - The `traefik` service defines the `crowdsec-bouncer` middleware via Docker labels so the LAPI key can be injected from `.env`.
-- `rules/base.yml` applies `crowdsec-bouncer@docker` only on `chain-external` and `chain-external-bypass`.
+- `dynamic.yml` applies `crowdsec-bouncer@docker` only on `chain-external` and `chain-external-bypass`.
 - `chain-internal` and `chain-internal-bypass` intentionally stay CrowdSec-free.
 - `CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS` must stay aligned with `websecure-external.forwardedHeaders.trustedIPs`.

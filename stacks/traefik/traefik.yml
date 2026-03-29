@@ -156,7 +156,7 @@ providers:
     exposedByDefault: false
     network: "smoonet"
   file:
-    directory: "/etc/traefik/rules"
+    filename: "/etc/traefik/dynamic.yml"
     watch: true
   http:
     endpoint: "http://traefik-middleware-manager:3456/api/v1/traefik-config"

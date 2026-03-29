@@ -41,4 +41,5 @@ The Traefik remediation path is handled by the official `crowdsec-bouncer-traefi
 
 - `CROWDSEC_TRAEFIK_BOUNCER_API_KEY` is shared with the Traefik stack.
 - The `crowdsec` service registers that key through `BOUNCER_KEY_TRAEFIK`.
+- `crowdsec-manager` targets the shared `/etc/traefik/dynamic.yml` file.
 - No standalone Traefik bouncer container is used in this stack anymore.

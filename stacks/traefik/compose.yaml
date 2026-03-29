@@ -121,19 +121,18 @@ services:
     volumes:
       - /mnt/user/appdata/traefik/middleware-manager/data:/data:rw
       - /mnt/user/appdata/traefik/middleware-manager/config:/app/config:rw
-      - /mnt/user/appdata/traefik/rules:/conf:rw
       - /mnt/user/appdata/traefik:/etc/traefik:rw
 
     # Environment variables
     environment:
       - ACTIVE_DATA_SOURCE=traefik
       - DB_PATH=/data/middleware.db
+      - ENABLE_FILE_CONFIG=false
       - HOST_CONTAINERNAME=${TRAEFIK_MIDDLEWARE_MANAGER_SERVICE}
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - PORT=3456
       - TRAEFIK_API_URL=http://traefik:8080
-      - TRAEFIK_CONF_DIR=/conf
       - TRAEFIK_STATIC_CONFIG_PATH=/etc/traefik/traefik.yml
       - TZ=Europe/Berlin
 

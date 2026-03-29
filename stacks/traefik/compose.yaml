@@ -85,12 +85,12 @@ services:
 
     # Volumes
     volumes:
-      - /mnt/user/appdata/traefik-dashboard/data/geoip/:/usr/share/GeoIP:rw
+      - /mnt/user/appdata/traefik/geoip/:/usr/share/GeoIP:rw
 
     # Environment variables
     environment:
       - GEOIPUPDATE_ACCOUNT_ID=${GEOIPUPDATE_ACCOUNT_ID}
-      - GEOIPUPDATE_EDITION_IDS=GeoLite2-City GeoLite2-Country
+      - GEOIPUPDATE_EDITION_IDS=GeoLite2-ASN GeoLite2-City GeoLite2-Country
       - GEOIPUPDATE_FREQUENCY=24
       - GEOIPUPDATE_LICENSE_KEY=${GEOIPUPDATE_LICENSE_KEY}
       - HOST_CONTAINERNAME=geoipupdate
@@ -188,8 +188,8 @@ services:
       - "5101:3000/tcp" # Dashboard UI
     # Volumes
     volumes:
-      - /mnt/user/appdata/traefik-dashboard/data/dashboard/:/data:rw
-      - /mnt/user/appdata/traefik-dashboard/data/geoip/:/geoip:ro
+      - /mnt/user/appdata/traefik/dashboard/:/data:rw
+      - /mnt/user/appdata/traefik/dashboard/geoip/:/geoip:ro
 
     # Environment variables
     environment:
@@ -258,7 +258,7 @@ services:
 
     # Volumes
     volumes:
-      - /mnt/user/appdata/traefik-dashboard/data/positions/:/data:rw
+      - /mnt/user/appdata/traefik/dashboard/positions/:/data:rw
       - /mnt/user/appdata/traefik/logs/:/logs:ro
 
     # Environment variables

@@ -146,9 +146,9 @@ That alternative has not been tested in this setup.
 
 ## Unraid and Repo Paths
 
-If your Komodo host runs on Unraid, check any stack that mounts files from the
-repository checkout by absolute host path. A current example is the `caddy`
-stack:
+If your Komodo host runs on Unraid, any stack that bind-mounts a single file
+from a repository checkout should use an absolute host path instead of a
+relative source path. A current example is the `caddy` stack:
 
 ```yaml
 /mnt/user/appdata/komodo/repos/homelab/stacks/caddy/Caddyfile
@@ -156,6 +156,33 @@ stack:
 
 Using `KOMODO_REPO_NAME` keeps the path configurable if your Komodo checkout
 directory differs from the default.
+
+Avoid patterns such as:
+
+```yaml
+./initdb/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+./compose.yaml:/app/docker-compose.yml:ro
+```
+
+In the current Unraid + Komodo Periphery layout, those relative single-file
+bind mounts can be resolved through the container-side `/etc/komodo/repos/...`
+path instead of the real host checkout under `/mnt/user/appdata/komodo/repos`.
+When Docker then cannot find the host source file, it creates the missing bind
+source path as a directory and the stack starts with a broken mount.
+
+Prefer host-absolute repo paths with a defaulted repo name instead:
+
+```yaml
+/mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/crowdsec/compose.yaml:/app/docker-compose.yml:ro
+/mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/mengram/initdb/01-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+```
+
+If a stack needs a file from a separate repository, use an explicit repo-name
+variable for that source as well, for example:
+
+```yaml
+/mnt/user/appdata/komodo/repos/${MENGRAM_SOURCE_REPO_NAME:-mengram}/cloud/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+```
 
 For repo-backed stacks, verify that:
 

@@ -135,7 +135,7 @@ services:
       - "6062:8080/tcp"
     restart: unless-stopped
     volumes:
-      - ./compose.yaml:/app/docker-compose.yml:ro
+      - /mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/crowdsec/compose.yaml:/app/docker-compose.yml:ro
       - /mnt/user/appdata/crowdsec/manager/backups/:/app/backups:rw
       - /mnt/user/appdata/crowdsec/manager/config/:/app/config:rw
       - /mnt/user/appdata/crowdsec/manager/data/:/app/data:rw

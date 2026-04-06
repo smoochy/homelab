@@ -13,7 +13,7 @@ services:
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
       - UID=1000
-    image: filebrowser/filebrowser:v2.62.2@sha256:d01ee49248ef1d2a26616bc11c196b1768e2a2b67040ff085c8ffd35c037d123
+    image: filebrowser/filebrowser:v2.63.1@sha256:0effd18992e8bd895649df97304bf69806e75ab94a5d75fce82d7276bd6067ab
     networks:
       smoonet:
     ports:

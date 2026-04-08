@@ -6,7 +6,6 @@ SAB_CONTAINER_NAME="sabnzbd"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_FILE="/config/sabnzbd.ini"
-QUEUE_FILE="${SCRIPT_DIR}/delete_item.queue"
 
 NZO_ID="${SAB_NZO_ID:-}"
 JOB_NAME="${3:-}"
@@ -23,9 +22,44 @@ read_misc_value() {
   ' "$CONFIG_FILE"
 }
 
+is_writable_path() {
+  local path="$1"
+  local parent_dir
+
+  [[ -n "$path" ]] || return 1
+
+  if [[ -e "$path" ]]; then
+    [[ -w "$path" ]]
+    return
+  fi
+
+  parent_dir="$(dirname "$path")"
+  [[ -d "$parent_dir" && -w "$parent_dir" ]]
+}
+
+resolve_queue_file() {
+  local candidate
+
+  for candidate in \
+    "${DELETE_ITEM_QUEUE_FILE:-}" \
+    "$(dirname "$CONFIG_FILE")/delete_item.queue" \
+    "${SCRIPT_DIR}/delete_item.queue"; do
+    if is_writable_path "$candidate"; then
+      printf "%s\n" "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 ensure_queue_file() {
+  QUEUE_FILE="$(resolve_queue_file)" || {
+    echo "[ERROR] delete_item: no writable queue path available" >&2
+    exit 1
+  }
   mkdir -p "$(dirname "$QUEUE_FILE")"
-  touch "$QUEUE_FILE"
+  [[ -e "$QUEUE_FILE" ]] || : > "$QUEUE_FILE"
 }
 
 [[ "$STATUS" == "0" ]] || exit 0

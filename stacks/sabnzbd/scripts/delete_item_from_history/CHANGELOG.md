@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-04-08
+
+### Queue path hardening
+
+- Prefer the shared SABnzbd config directory queue before the script directory.
+- Prevent hook and worker drift by resolving the same shared queue location on both sides.
+- Fail with a clear error when no writable shared queue path is available.
+
 ## 2026-03-14
 
 ### Initial release

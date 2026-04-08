@@ -3,9 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DELETE_SCRIPT="${SCRIPT_DIR}/delete_item.sh"
-QUEUE_FILE="${SCRIPT_DIR}/delete_item.queue"
-TMP_FILE="${QUEUE_FILE}.tmp"
-LOCK_DIR="${QUEUE_FILE}.lock"
 
 read_delete_script_value() {
   local key="$1"
@@ -21,9 +18,46 @@ read_delete_script_value() {
   ' "$DELETE_SCRIPT"
 }
 
+is_writable_path() {
+  local path="$1"
+  local parent_dir
+
+  [[ -n "$path" ]] || return 1
+
+  if [[ -e "$path" ]]; then
+    [[ -w "$path" ]]
+    return
+  fi
+
+  parent_dir="$(dirname "$path")"
+  [[ -d "$parent_dir" && -w "$parent_dir" ]]
+}
+
+resolve_queue_file() {
+  local candidate
+
+  for candidate in \
+    "${DELETE_ITEM_QUEUE_FILE:-}" \
+    "$(dirname "$SCRIPT_DIR")/delete_item.queue" \
+    "${SCRIPT_DIR}/delete_item.queue"; do
+    if is_writable_path "$candidate"; then
+      printf "%s\n" "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
 ensure_queue_file() {
+  QUEUE_FILE="$(resolve_queue_file)" || {
+    echo "[ERROR] delete_items_worker: no writable queue path available" >&2
+    exit 1
+  }
+  TMP_FILE="${QUEUE_FILE}.tmp"
+  LOCK_DIR="${QUEUE_FILE}.lock"
   mkdir -p "$(dirname "$QUEUE_FILE")"
-  touch "$QUEUE_FILE"
+  [[ -e "$QUEUE_FILE" ]] || : > "$QUEUE_FILE"
 }
 
 resolve_history_identifier() {

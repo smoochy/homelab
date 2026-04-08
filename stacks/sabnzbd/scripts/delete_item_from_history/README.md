@@ -42,7 +42,7 @@ remove those history entries automatically after successful jobs.
 ## Requirements
 
 - SABnzbd running in Docker
-- A writable scripts directory mapped into the container
+- A writable shared queue location available to both the container and the host
 - `curl` available inside the SABnzbd container
 - `docker` available on the host for the worker script
 
@@ -50,7 +50,7 @@ remove those history entries automatically after successful jobs.
 
 - `delete_item.sh`: post-processing script executed by SABnzbd
 - `delete_items_worker.sh`: host-side worker that processes the queue
-- `delete_item.queue`: created automatically and used as a queue
+- `delete_item.queue`: created automatically and used as a queue, preferably beside `sabnzbd.ini`
 
 ## Configuration
 
@@ -66,7 +66,7 @@ Open `delete_item.sh` and adjust these values:
 
 - Host path: `/mnt/user/appdata/{sabnzbd}/scripts`
 - Container path: `/scripts`
-- Access: Read/Write
+- Access: Read/Only or Read/Write
 
 Restart the container afterwards.
 
@@ -116,13 +116,13 @@ Example cron entry:
 ## Usage
 
 - SABnzbd triggers `delete_item.sh` for completed jobs in configured categories
-- The worker processes `delete_item.queue` and performs the actual history deletion
+- The worker processes the shared queue file and performs the actual history deletion
 
 ## How It Works
 
 1. SABnzbd finishes a download successfully.
 2. `delete_item.sh` checks whether the category matches `DELETE_CATEGORIES`.
-3. If it matches, the script appends the job identifier and API details to `delete_item.queue`.
+3. If it matches, the script appends the job identifier and API details to `delete_item.queue`, preferring the SABnzbd config directory and falling back to the script directory only when needed.
 4. `delete_items_worker.sh` reads the queue and deletes the matching entries from SABnzbd history.
 
 ## Notes
@@ -130,6 +130,7 @@ Example cron entry:
 - The worker uses a lock directory so only one instance runs at a time
 - If a delete request fails, the item is requeued
 - `delete_item.sh` expects SABnzbd's config at `/config/sabnzbd.ini`
+- The default shared queue path is `/config/delete_item.queue` on the container side, which maps to `/mnt/user/appdata/{sabnzbd}/delete_item.queue` on the host
 
 ## Changelog
 

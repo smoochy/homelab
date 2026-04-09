@@ -1,7 +1,7 @@
 services:
   questarr:
     container_name: questarr
-    image: ghcr.io/doezer/questarr:production-sha-2f98a0f@sha256:926baba46914654168cf015896232db80b4d8db1ae29d4f34d9117afb6ca769a
+    image: ghcr.io/doezer/questarr:production-sha-2f98a0f@sha256:b8fae214871b789f473e0d780be46081a6e1a32fde9fa319cc90d2a0a0c91a32
     restart: unless-stopped
 
     # Network

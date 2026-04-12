@@ -125,6 +125,11 @@ environment. The most important keys are:
 - `KUMA_AUTH_TOKEN` or `KUMA_USERNAME` plus `KUMA_PASSWORD`: Uptime Kuma
   authentication
 
+On Unraid, point `APPDATA_ROOT` and `KUMA_DB_FILE` at the direct cache path
+such as `/mnt/cache/appdata` instead of `/mnt/user/appdata` when the target app
+stores SQLite data. That avoids routing live database access through the `shfs`
+user-share path.
+
 Normal setup changes should only require edits in `.env`.
 
 ## Install

@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-04-12
+
+### Direct cache path defaults for Unraid
+
+- Switched the tracked `uptime-kuma` stack volume from
+  `/mnt/user/appdata/uptimekuma` to `/mnt/cache/appdata/uptimekuma` so the
+  SQLite runtime avoids the `shfs` user-share path on Unraid.
+- Updated the helper to prefer `/mnt/cache/appdata` automatically when that
+  direct cache path exists on the host.
+- Updated `.env.example` and the published README guidance to point host-side
+  `APPDATA_ROOT` and `KUMA_DB_FILE` at the direct cache path for SQLite-backed
+  deployments on Unraid.
+
 ## 2026-03-28
 
 ### DNS monitor readiness support

@@ -20,7 +20,12 @@ else
   load_env_file "${SCRIPT_DIR}/.env"
 fi
 
-APPDATA_ROOT="${APPDATA_ROOT:-/mnt/user/appdata}"
+DEFAULT_APPDATA_ROOT="/mnt/user/appdata"
+if [[ -d "/mnt/cache/appdata" ]]; then
+  DEFAULT_APPDATA_ROOT="/mnt/cache/appdata"
+fi
+
+APPDATA_ROOT="${APPDATA_ROOT:-${DEFAULT_APPDATA_ROOT}}"
 KUMA_CONTAINER_NAME="${KUMA_CONTAINER_NAME:-uptime-kuma}"
 KUMA_BASE_URL="${KUMA_BASE_URL:-http://127.0.0.1:3001}"
 KUMA_DB_FILE="${KUMA_DB_FILE:-${APPDATA_ROOT}/uptimekuma/kuma.db}"

@@ -98,7 +98,7 @@ services:
       - TRAEFIK_DYNAMIC_CONFIG=/etc/traefik/dynamic.yml
       - TRAEFIK_STATIC_CONFIG=/etc/traefik/traefik.yml
       - TZ=Europe/Berlin
-    image: ghcr.io/hhftechnology/crowdsec_manager:2.3.0@sha256:f0bf971db61f0ec0f4242e572a8efe5b0747634efa25d4abc5a671981b3d0bbb
+    image: ghcr.io/hhftechnology/crowdsec_manager:2.3.1@sha256:c9edf1a0182a5644324483489d3bdd93517ff27eda454856a25decff3b2e96b1
     labels:
       - traefik.enable=true
       # # Internal

@@ -177,7 +177,7 @@ services:
     depends_on:
       - traefik
       - traefik-log-dashboard-agent
-    image: hhftechnology/traefik-log-dashboard:3.1.0@sha256:94ea310cd7f6ad872c5be6f022ed9111f3db9417a538176c2d80cbb95a48294d
+    image: hhftechnology/traefik-log-dashboard:3.1.1@sha256:f982908e6d0665fd361eeef893d50d7743be09e1c95d3a087d4f7d47a651bead
     restart: unless-stopped
 
     # Network
@@ -246,7 +246,7 @@ services:
       - net.unraid.docker.webui=${TRAEFIK_LOG_DASHBOARD_INTERNAL_URL}/dashboard
   traefik-log-dashboard-agent:
     container_name: traefik-log-dashboard-agent
-    image: hhftechnology/traefik-log-dashboard-agent:3.1.0@sha256:583eecbf8df9785bd4dc304975c6ac877dda7ff87b1620d0196c197a2b112e20
+    image: hhftechnology/traefik-log-dashboard-agent:3.1.1@sha256:4c9853d486a0e3108678fd00aeda86ce1b269c0ae1b1c2ab9e5c81760e12d53a
     restart: unless-stopped
 
     # Network

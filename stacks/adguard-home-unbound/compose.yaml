@@ -66,7 +66,7 @@ services:
       - net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/linuxserver-ls-logo.png
   adguard-home-unbound:
     container_name: adguard-home-unbound
-    image: ghcr.io/mainfrezzer/adguardhome:v0.107.73@sha256:305b4837e6271e76eeff6960e7a068c0d495c2fe2309934cab2618c878ea6a21
+    image: ghcr.io/mainfrezzer/adguardhome:v0.107.74@sha256:4c08d5d6219a903e672990ac3d29f1fdd36e916030e7b0424eaa652c5e914edd
     restart: unless-stopped
 
     # Network config (macvlan/br0 mit fester IP)

@@ -11,7 +11,7 @@ services:
       - HOST_OS=Unraid
       - OTEL_TRACES_EXPORTER=none
       - TZ=Europe/Berlin
-    image: registry:3.1.0@sha256:afcd13fd045b8859ac4f60fef26fc2d2f9b7b9d9e604c3c4f7c2fb1b94f95a64
+    image: registry:3.1.0@sha256:8a7c1aae9db5028cbc1cfe83e5969d270a50e8bc0b72eef3cc5657542ec383c9
     networks:
       smoonet:
     ports:

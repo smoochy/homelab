@@ -172,6 +172,82 @@ services:
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://github.com/hhftechnology.png
       - net.unraid.docker.webui=${TRAEFIK_MIDDLEWARE_MANAGER_INTERNAL_URL}
+  traefik-manager:
+    container_name: traefik-manager
+    depends_on:
+      - traefik
+    image: ghcr.io/chr0nzz/traefik-manager:1.0.3@sha256:0569b184f40aab539c07e6b17809afec2b9ceeda05530539f9d9c8ca5e801d56
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "5102:5000/tcp" # Traefik Manager UI
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik/dynamic.yml:/app/traefik/dynamic.yml:rw
+      - /mnt/user/appdata/traefik/traefik.yml:/app/traefik/traefik.yml:rw
+      - /mnt/user/appdata/traefik/acme.json:/app/traefik/acme.json:ro
+      - /mnt/user/appdata/traefik/logs/access.log:/app/traefik/logs/access.log:ro
+      - /mnt/user/appdata/traefik/traefik-manager/config:/app/config:rw
+      - /mnt/user/appdata/traefik/traefik-manager/backups:/app/backups:rw
+
+    # Environment variables
+    environment:
+      - ACME_JSON_PATH=/app/traefik/acme.json
+      - ACCESS_LOG_PATH=/app/traefik/logs/access.log
+      - CERT_RESOLVER=cloudflare
+      - CONFIG_PATH=/app/traefik/dynamic.yml
+      - COOKIE_SECURE=true
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - DOMAINS=${TRAEFIK_MANAGER_DOMAINS}
+      - HOST_CONTAINERNAME=${TRAEFIK_MANAGER_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - RESTART_METHOD=proxy
+      - STATIC_CONFIG_PATH=/app/traefik/traefik.yml
+      - TRAEFIK_API_URL=http://traefik:8080
+      - TRAEFIK_CONTAINER=traefik
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.rule=Host(`${TRAEFIK_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.service=${TRAEFIK_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.priority=10
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.rule=Host(`${TRAEFIK_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.service=${TRAEFIK_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.rule=Host(`${TRAEFIK_MANAGER_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.service=${TRAEFIK_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.tls=true
+      # Service port (Traefik Manager runs on 5000)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${TRAEFIK_MANAGER_SERVICE}.loadbalancer.server.url=${TRAEFIK_MANAGER_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/chr0nzz.png
+      - net.unraid.docker.webui=${TRAEFIK_MANAGER_INTERNAL_URL}
   traefik-log-dashboard:
     container_name: traefik-log-dashboard
     depends_on:

@@ -11,6 +11,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - `traefik`
 - `geoipupdate`
 - `traefik-middleware-manager`
+- `traefik-manager`
 - `traefik-log-dashboard`
 - `traefik-log-dashboard-agent`
 
@@ -31,6 +32,11 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - Website: [https://github.com/hhftechnology/middleware-manager](https://github.com/hhftechnology/middleware-manager)
 - GitHub: [https://github.com/hhftechnology/middleware-manager](https://github.com/hhftechnology/middleware-manager)
 
+### `traefik-manager`
+
+- Website: [https://traefik-manager.xyzlab.dev/](https://traefik-manager.xyzlab.dev/)
+- GitHub: [https://github.com/chr0nzz/traefik-manager](https://github.com/chr0nzz/traefik-manager)
+
 ### `traefik-log-dashboard`
 
 - Website: [https://github.com/hhftechnology/traefik-log-dashboard](https://github.com/hhftechnology/traefik-log-dashboard)
@@ -50,6 +56,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - `traefik.yml` loads the file provider from `dynamic.yml` and keeps the HTTP provider endpoint for `traefik-middleware-manager`.
 - `dynamic.yml` stores the repo-managed baseline middlewares, routers, and services for the single-file setup.
 - `traefik-middleware-manager` stays in the stack in API-only mode.
+- `traefik-manager` provides a web UI for route, middleware, service, certificate, log, and static configuration operations against the same Traefik runtime files.
 - `scripts/cloudflare_trusted_ips` stores the host-side automation that refreshes the managed Cloudflare IP block, republishes the matching `CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS` value through `stacks/traefik/.env.enc` and `stacks/traefik/.env.example`, and creates dated backups of `traefik.yml` and `dynamic.yml` under `/mnt/user/appdata/traefik/backups` before each run.
 ## CrowdSec Plugin
 

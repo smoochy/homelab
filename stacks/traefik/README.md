@@ -53,7 +53,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 ## Config Layout
 
-- `traefik.yml` loads the file provider from `dynamic.yml` and keeps the HTTP provider endpoint for `traefik-middleware-manager`.
+- `traefik.yml` loads the file provider from `dynamic.yml`; the unstable HTTP provider endpoint from `traefik-middleware-manager` is not enabled.
 - `dynamic.yml` stores the repo-managed baseline middlewares, routers, and services for the single-file setup.
 - `traefik-middleware-manager` stays in the stack in API-only mode.
 - `traefik-manager` provides a web UI for route, middleware, service, certificate, log, and static configuration operations against the same Traefik runtime files.

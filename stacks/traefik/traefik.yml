@@ -158,6 +158,3 @@ providers:
   file:
     filename: "/etc/traefik/dynamic.yml"
     watch: true
-  http:
-    endpoint: "http://traefik-middleware-manager:3456/api/v1/traefik-config"
-    pollInterval: 5s

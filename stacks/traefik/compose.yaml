@@ -26,6 +26,7 @@ services:
     # Environment variables
     environment:
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN} # Cloudflare API token (sensitive!)
+      - DOCKER_API_VERSION=1.54
       - DOCKER_HOST=tcp://dockerproxy:2375 # Docker socket proxy
       - HOST_CONTAINERNAME=traefik
       - HOST_HOSTNAME=homelab-host

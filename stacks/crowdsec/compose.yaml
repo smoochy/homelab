@@ -41,7 +41,7 @@ services:
       - MGID=98
       - MUID=99
       - TZ=Europe/Berlin
-    image: metabase/metabase:v0.60.4.4@sha256:7f1ffaf0358bec62767ac0145bcf85f3e7fbb54dc81255acc9e1c6af1851b8e6
+    image: metabase/metabase:v0.60.5.1@sha256:7fb43cf2bc6ae8d51b551ce2640ea3da4cd521d96e383f188f8ac67986e2238e
     networks:
       - smoonet
     pids_limit: 2048

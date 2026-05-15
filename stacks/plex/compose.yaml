@@ -9,6 +9,7 @@ services:
     networks:
       br0:
         ipv4_address: 192.0.2.103
+        mac_address: ea:fa:4e:de:c5:da
 
     # Volumes
     tmpfs:

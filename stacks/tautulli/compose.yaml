@@ -8,6 +8,7 @@ services:
     networks:
       br0:
         ipv4_address: 192.0.2.100
+        mac_address: 5a:23:37:f7:48:71
       smoonet: {}
     # Ports
     ports:

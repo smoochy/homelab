@@ -17,6 +17,7 @@ services:
     networks:
       br0:
         ipv4_address: 192.0.2.4
+        mac_address: 8a:54:d6:d4:03:25
     pids_limit: 2048
     restart: unless-stopped
     volumes:

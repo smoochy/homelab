@@ -73,6 +73,7 @@ services:
     networks:
       br0:
         ipv4_address: 192.0.2.3
+        mac_address: ae:81:a9:a1:86:fc
       smoonet: {}
     # Environment variables
     environment:

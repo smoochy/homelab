@@ -5,11 +5,12 @@ services:
       disable: true # Matches --no-healthcheck
     image: ghcr.io/linuxserver/plex:version-1.43.0.10492-121068a07@sha256:a21302c5297943e204e9b262f8c2eca3e0c7ddb52490bfb3f1db47f6103721ab
     restart: unless-stopped
-    # Network (macvlan/br0 with static IP)
+    # Network (macvlan/br0 with static IP + smoonet for internal service reachability)
     networks:
       br0:
         ipv4_address: 192.0.2.103
         mac_address: ea:fa:4e:de:c5:da
+      smoonet: {}
 
     # Volumes
     tmpfs:
@@ -68,3 +69,6 @@ networks:
   br0:
     external: true
     name: br0
+  smoonet:
+    external: true
+    name: smoonet

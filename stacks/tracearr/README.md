@@ -14,3 +14,10 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 - Website: [https://tracearr.com/](https://tracearr.com/)
 - GitHub: [https://github.com/connorgallopo/tracearr](https://github.com/connorgallopo/tracearr)
+
+## Network Notes
+
+Use direct internal service addressing on `smoonet` for service-to-service traffic.
+
+- Preferred internal URL: `http://tracearr:3000`
+- Preferred direct Plex URL after dual-networking Plex: `http://plex:32400`

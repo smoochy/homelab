@@ -18,6 +18,7 @@ services:
       br0:
         ipv4_address: 192.0.2.4
         mac_address: 8a:54:d6:d4:03:25
+      smoonet: {}
     pids_limit: 2048
     restart: unless-stopped
     volumes:
@@ -47,7 +48,7 @@ services:
       - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
       - traefik.http.routers.${SERVICE}-bypass.tls=true
       # Service port (must match the port Komodo listens on INSIDE the container)
-      - traefik.docker.network=br0
+      - traefik.docker.network=smoonet
       - traefik.http.services.homebridge.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=homebridge
@@ -55,4 +56,6 @@ services:
       - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
 networks:
   br0:
+    external: true
+  smoonet:
     external: true

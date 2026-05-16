@@ -56,7 +56,7 @@ services:
       - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
       - traefik.http.routers.${SERVICE}-bypass.tls=true
       # Service port (must match the port Komodo listens on INSIDE the container)
-      - traefik.docker.network=br0
+      - traefik.docker.network=smoonet
       - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=tautulli

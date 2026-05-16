@@ -33,8 +33,9 @@ services:
     volumes:
       - /mnt/user/appdata/tracearr:/mnt/user/appdata/tracearr:rw
       - /mnt/user/appdata/tracearr:/data/tracearr
-      #- tracearr_postgres:/data/postgres
-      #- tracearr_redis:/data/redis
+      - /mnt/user/appdata/tracearr/postgres:/data/postgres
+      - /mnt/user/appdata/tracearr/redis:/data/redis
+      - /mnt/user/appdata/tracearr/backup:/data/backup
     ## Start Traefik Config
     labels:
       - traefik.enable=true
@@ -71,7 +72,4 @@ services:
 networks:
   smoonet:
     external: true
-volumes:
-  # tracearr_data:
-  tracearr_postgres:
-  tracearr_redis:
+# Data lives under /mnt/user/appdata/tracearr so appdata backups include it.

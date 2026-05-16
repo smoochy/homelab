@@ -16,7 +16,7 @@ services:
     tmpfs:
       - /tmp/plex:size=20000000000
     volumes:
-      - /mnt/cache/appdata/Plex-Media-Server:/config:rw # Plex config/DB [web:68]
+      - /mnt/user/appdata/Plex-Media-Server:/config:rw # Plex config/DB [web:68]
       - /mnt/user/data/Plex/:/data/Plex:rw # Media libraries
       - /tmp/plex/:/transcode:rw # Transcode temp
     # Environment variables

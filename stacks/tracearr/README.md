@@ -21,3 +21,12 @@ Use direct internal service addressing on `smoonet` for service-to-service traff
 
 - Preferred internal URL: `http://tracearr:3000`
 - Preferred direct Plex URL after dual-networking Plex: `http://plex:32400`
+## Data Persistence
+
+Tracearr stores runtime state under `/mnt/user/appdata/tracearr` so the daily appdata backup captures the database and cache state.
+
+- PostgreSQL data: `/mnt/user/appdata/tracearr/postgres` -> `/data/postgres`
+- Redis data: `/mnt/user/appdata/tracearr/redis` -> `/data/redis`
+- Tracearr backup path: `/mnt/user/appdata/tracearr/backup` -> `/data/backup`
+
+Stop the container before restoring these directories to avoid partial database writes. Migration snapshots from the initial move are stored under `/mnt/user/appdata/tracearr/migration-backups`.

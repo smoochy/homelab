@@ -13,7 +13,7 @@ services:
       - PUID=99
       - TZ=Europe/Berlin
       - UMASK=022
-    image: ghcr.io/linuxserver/prowlarr:2.3.0.5236-ls138@sha256:a8fe7b9c502f979146b6d0f22438b825c38e068241bb8a708c473062dffdbb03
+    image: ghcr.io/linuxserver/prowlarr:2.3.5.5327-ls146@sha256:a89f252d6a22bd25af14a5380aec0adcc3c3af2e3282164f981680e6844070f3
     networks:
       smoonet:
     ports:

@@ -177,5 +177,4 @@ volumes:
 
 networks:
   smoonet:
-    external: true
     name: smoonet

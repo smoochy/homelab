@@ -81,7 +81,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
-      - net.unraid.docker.webui=http://192.0.2.99:3000
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
   crowdsec-manager:
     container_name: crowdsec-manager
     depends_on:
@@ -127,7 +127,7 @@ services:
       - traefik.http.services.${CROWDSEC_MANAGER_SERVICE}.loadbalancer.server.url=${CROWDSEC_MANAGER_INTERNAL_URL}
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
-      - net.unraid.docker.webui=${CROWDSEC_MANAGER_INTERNAL_URL}
+      - net.unraid.docker.webui=${CROWDSEC_MANAGER_UNRAID_WEBGUI_URL}
     networks:
       - smoonet
     pids_limit: 2048

@@ -74,7 +74,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/unraid-templates/master/traefik/traefik.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
   geoipupdate:
     container_name: geoipupdate
     image: ghcr.io/maxmind/geoipupdate:v7.1.1@sha256:faecdca22579730ab0b7dea5aa9af350bb3c93cb9d39845c173639ead30346d2
@@ -172,7 +172,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://github.com/hhftechnology.png
-      - net.unraid.docker.webui=${TRAEFIK_MIDDLEWARE_MANAGER_INTERNAL_URL}
+      - net.unraid.docker.webui=${TRAEFIK_MIDDLEWARE_MANAGER_UNRAID_WEBGUI_URL}
   traefik-manager:
     container_name: traefik-manager
     depends_on:
@@ -248,7 +248,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://github.com/chr0nzz.png
-      - net.unraid.docker.webui=${TRAEFIK_MANAGER_INTERNAL_URL}
+      - net.unraid.docker.webui=${TRAEFIK_MANAGER_UNRAID_WEBGUI_URL}
   traefik-log-dashboard:
     container_name: traefik-log-dashboard
     depends_on:
@@ -320,7 +320,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://github.com/user-attachments/assets/e6cf097b-2232-4c2c-ba55-5de780724aed
-      - net.unraid.docker.webui=${TRAEFIK_LOG_DASHBOARD_INTERNAL_URL}/dashboard
+      - net.unraid.docker.webui=${TRAEFIK_LOG_DASHBOARD_UNRAID_WEBGUI_URL}
   traefik-log-dashboard-agent:
     container_name: traefik-log-dashboard-agent
     image: hhftechnology/traefik-log-dashboard-agent:3.1.1@sha256:4c9853d486a0e3108678fd00aeda86ce1b269c0ae1b1c2ab9e5c81760e12d53a

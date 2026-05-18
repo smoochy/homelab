@@ -85,7 +85,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=homepage
       - net.unraid.docker.icon=https://raw.githubusercontent.com/gethomepage/homepage/main/public/android-chrome-512x512.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
 networks:
   smoonet:
     external: true

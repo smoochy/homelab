@@ -58,6 +58,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - `traefik-middleware-manager` stays in the stack in API-only mode.
 - `traefik-manager` provides a web UI for route, middleware, service, certificate, log, and static configuration operations against the same Traefik runtime files.
 - `scripts/cloudflare_trusted_ips` stores the host-side automation that refreshes the managed Cloudflare IP block, republishes the matching `CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS` value through `stacks/traefik/.env.enc` and `stacks/traefik/.env.example`, and creates dated backups of `traefik.yml` and `dynamic.yml` under `/mnt/user/appdata/traefik/backups` before each run.
+
 ## CrowdSec Plugin
 
 This stack uses the official CrowdSec Traefik plugin for edge remediation instead of a dedicated forward-auth sidecar container.

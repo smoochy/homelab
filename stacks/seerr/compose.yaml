@@ -40,7 +40,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=seerr
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jellyseerr.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
     # Network config
     healthcheck:
       interval: 15s

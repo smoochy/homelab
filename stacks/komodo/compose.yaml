@@ -106,7 +106,7 @@ services:
       ## End Traefik Config
       - net.unraid.docker.managed=composeman
       - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png"
-      - net.unraid.docker.webui="${KOMODO_TRAEFIK_INTERNAL_URL}"
+      - net.unraid.docker.webui="${KOMODO_UNRAID_WEBGUI_URL}"
     networks:
       - smoonet
     restart: unless-stopped
@@ -143,7 +143,7 @@ services:
     labels:
       - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
       - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png"
-      - net.unraid.docker.webui="${KOMODO_TRAEFIK_INTERNAL_URL}"
+      - net.unraid.docker.webui="${KOMODO_UNRAID_WEBGUI_URL}"
     restart: unless-stopped
     env_file: .env
     environment:

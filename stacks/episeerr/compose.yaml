@@ -67,7 +67,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=episeerr
       - net.unraid.docker.icon=https://raw.githubusercontent.com/Vansmak/episeerr/refs/heads/main/static/logo_icon.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
 networks:
   smoonet:
     external: true

@@ -7,6 +7,9 @@ services:
     restart: unless-stopped
 
     # Network config
+    # Keep sync API traffic on smoonet. Bridge-network containers cannot
+    # reliably reach AdGuard's br0/macvlan IP (192.0.2.3), so the sync YAML
+    # should target http://adguard-home-unbound for the local replica API.
     networks:
       smoonet: {}
     # Ports
@@ -15,7 +18,7 @@ services:
       - "9105:8080" # Same container port, different external port (Prometheus etc.)
     # Volumes
     volumes:
-      - /mnt/user/appdata/adguard-home-sync:/config # Contains adguardhome-sync.yaml [web:6][web:14]
+      - /mnt/user/appdata/adguard/adguard-home-sync:/config # Contains adguardhome-sync.yaml [web:6][web:14]
     # Environment variables
     environment:
       - CONFIGFILE=/config/adguard-home-sync.yaml
@@ -64,6 +67,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=adguard-home
       - net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/linuxserver-ls-logo.png
+      - net.unraid.docker.webui=${ADGUARD_HOME_SYNC_UNRAID_WEBGUI_URL}
   adguard-home-unbound:
     container_name: adguard-home-unbound
     image: ghcr.io/mainfrezzer/adguardhome:v0.107.74@sha256:4c08d5d6219a903e672990ac3d29f1fdd36e916030e7b0424eaa652c5e914edd
@@ -130,7 +134,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=adguard-home
       - net.unraid.docker.icon=https://raw.githubusercontent.com/Mainfrezzer/UnRaid-Templates/main/icon/adguard.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
 networks:
   br0:
     external: true

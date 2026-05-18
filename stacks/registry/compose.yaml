@@ -47,7 +47,7 @@ services:
       - com.smoochy.komodo.restore_stack=${SERVICE}
       # Unraid metadata
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/docker-moby.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
   registry-ui:
     container_name: registry-ui
     depends_on:
@@ -102,7 +102,7 @@ services:
       - com.smoochy.komodo.restore_stack=registry
       # Unraid metadata
       - net.unraid.docker.icon=https://github.com/juusujanar/unraid-templates/raw/master/img/DockerRegistry-logo.png
-      - net.unraid.docker.webui=${REGISTRY_UI_INTERNAL_URL}
+      - net.unraid.docker.webui=${REGISTRY_UI_UNRAID_WEBGUI_URL}
 networks:
   smoonet:
     external: true

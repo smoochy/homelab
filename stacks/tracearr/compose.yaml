@@ -18,7 +18,7 @@ services:
         - -f
         - http://127.0.0.1:3000/health
       timeout: 10s
-    image: ghcr.io/connorgallopo/tracearr:supervised-1.4.24@sha256:d2bac0556de2dd4c655cf0c7b5b7ab6f3b3f42d97452857adcfd6f59b650abaa
+    image: ghcr.io/connorgallopo/tracearr:supervised-1.4.28@sha256:1dbc737303e7d6edfba086195f3d09fab3de8e1511088123e6335ff36218acc4
     mem_limit: ${TRACEARR_MEM_LIMIT}
     networks:
       - smoonet
@@ -68,7 +68,7 @@ services:
       - com.smoochy.komodo.restore_stack=${SERVICE}
       # Unraid metadata
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/servarr.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
 networks:
   smoonet:
     external: true

@@ -13,7 +13,10 @@ services:
       - TCP_PORT_8581=8581
       - TZ=Europe/Berlin
       - UMASK=0000
-    image: homebridge/homebridge:2026-03-07@sha256:d150c770ec7879b1d277cf162cb104ba5ac4856cd4b887539f0e2c5dfd4c4784
+    image: homebridge/homebridge:2026-05-13@sha256:36d43ed9711e37fba7a2ab82165c8f3b199398fd6d491c9eeaf289d43850e927
+    # Keep HomeKit/LAN discovery on br0, but use smoonet for Docker-internal
+    # services like mosquitto. MQTT clients inside Homebridge should target the
+    # broker hostname `mosquitto`, not the host LAN IP.
     networks:
       br0:
         ipv4_address: 192.0.2.4
@@ -53,7 +56,7 @@ services:
       ## End Traefik Config
       - com.smoochy.komodo.restore_stack=homebridge
       - net.unraid.docker.icon=https://raw.githubusercontent.com/homebridge/branding/master/logos/homebridge-color-round-stylized.png
-      - net.unraid.docker.webui=${TRAEFIK_INTERNAL_URL}
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
 networks:
   br0:
     external: true

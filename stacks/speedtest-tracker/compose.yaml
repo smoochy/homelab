@@ -1,7 +1,7 @@
 services:
   speedtest-tracker:
     container_name: speedtest-tracker
-    image: ghcr.io/linuxserver/speedtest-tracker:v1.14.1-ls150@sha256:a2f4b798445ad702df27b028f190cd7247627d1d3c6cb473f684e2738658021f
+    image: ghcr.io/linuxserver/speedtest-tracker:v1.14.2-ls152@sha256:3f75c5ec7a14c232f91af1ddda4248543bb2e8f0aeb18fec64c34d2f42dd00ce
     restart: unless-stopped
 
     # Network

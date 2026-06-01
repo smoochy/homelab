@@ -31,7 +31,7 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
-    image: ghcr.io/goauthentik/server:2026.5.0@sha256:feb81e02f7af70469c87c8a4fbfdb148647ae7a3ee5f79f8b08b7ee02b98c4c9
+    image: ghcr.io/goauthentik/server:2026.5.2@sha256:3ddf09bbf69ded6a9634ecd753a01608d477f811e99bb5ffe9fc2ef7ad1c6581
     networks:
       - authentik
       - smoonet
@@ -89,7 +89,7 @@ services:
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       DOCKER_HOST: tcp://dockerproxy:2375
-    image: ghcr.io/goauthentik/server:2026.5.0@sha256:feb81e02f7af70469c87c8a4fbfdb148647ae7a3ee5f79f8b08b7ee02b98c4c9
+    image: ghcr.io/goauthentik/server:2026.5.2@sha256:3ddf09bbf69ded6a9634ecd753a01608d477f811e99bb5ffe9fc2ef7ad1c6581
     networks:
       - authentik
       - smoonet

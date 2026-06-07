@@ -34,9 +34,13 @@ Renovate `stability-days`:
 
 The `pr-age-gate` workflow refreshes those statuses on PR events and on a
 schedule. The `timed-pr-automerge` workflow evaluates all non-preview PRs and
-merges them only when the current head SHA is at least 5 days old, the PR is
-mergeable, all merge-relevant checks are green, and no human review blocker
-remains.
+merges most eligible PRs only when the current head SHA is at least 3 days old,
+the PR is mergeable, all merge-relevant checks are green, and no human review
+blocker remains.
+
+`ghcr.io/smoochy/mengram` is the narrow fast-follower exception to that default
+merge-age policy. Its Renovate PRs can merge once the current head SHA is at
+least 24 hours old and the normal merge checks are otherwise green.
 
 `pr-age-gate` concurrency is isolated per PR for `pull_request` runs and per
 ref for scheduled or manual runs so parallel Renovate PRs do not cancel each

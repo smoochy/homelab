@@ -17,7 +17,7 @@ services:
       - TIMEOUT=300000
       - TOKEN=${BROWSERLESS_TOKEN}
       - TZ=Europe/Berlin
-    image: ghcr.io/browserless/chromium:v2.51.0@sha256:fee73de217759eb4053358dc09818b9e9a6cf4a1d1269a0d2da487e0797e0a22
+    image: ghcr.io/browserless/chromium:v2.52.1@sha256:c963367a01183bd13105a4cf09b64d9cee51ed391221252ba3a27ccd2a78fce2
     networks:
       smoonet:
     ports:

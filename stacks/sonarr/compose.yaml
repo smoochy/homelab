@@ -15,7 +15,7 @@ services:
       - SONARR_CHANNEL=v4-stable
       - TZ=Europe/Berlin
       - UMASK=022
-    image: ghcr.io/linuxserver/sonarr:4.0.17.2952-ls314@sha256:f899c1a9d7409fd226fdaae7f94302b80a494744fe5c670930a0ccc942641dba
+    image: ghcr.io/linuxserver/sonarr:4.0.19.2979-ls316@sha256:3a9c32c551db57091f5048a3a8de6555e786120ffcf60e1fc873a6d065e52409
     networks:
       smoonet:
     ports:

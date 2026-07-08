@@ -18,7 +18,7 @@ services:
         - -f
         - http://127.0.0.1:3000/health
       timeout: 10s
-    image: ghcr.io/connorgallopo/tracearr:supervised-1.4.29@sha256:814b8bbddc37d9fb8f6aeea21a0fc15e052726be57fd0855345c55003c24191b
+    image: ghcr.io/connorgallopo/tracearr:supervised-1.4.30@sha256:bdc760d7bfc4ffdc4af40e3f6e212a89f7bed68d49f44395f18ea39a74ff84bd
     mem_limit: ${TRACEARR_MEM_LIMIT}
     networks:
       - smoonet

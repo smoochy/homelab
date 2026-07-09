@@ -3,7 +3,7 @@ services:
     container_name: plex
     healthcheck:
       disable: true # Matches --no-healthcheck
-    image: ghcr.io/linuxserver/plex:1.43.2.10687-563d026ea-ls311@sha256:5a2dca89f4b53222ba2565ffa9ede3f320f37a69ac4b7fd475b492f772c5523b
+    image: ghcr.io/linuxserver/plex:1.43.2.10687-563d026ea-ls312@sha256:12008668bf8b79c6ffeb0c0a7878a0354aaaa032368da71a0ea5e84717453b11
     restart: unless-stopped
     # Network (macvlan/br0 with static IP + smoonet for internal service reachability)
     networks:

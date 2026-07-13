@@ -22,6 +22,7 @@ services:
     # Volumes
     volumes:
       - /mnt/user/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
+      - /mnt/user/appdata/traefik/plugins-storage:/plugins-storage # Plugin cache: start survives DNS/internet outage, no re-download
 
     # Environment variables
     environment:

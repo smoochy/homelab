@@ -2,7 +2,7 @@ services:
   cloudflared:
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
     container_name: cloudflared
-    image: cloudflare/cloudflared:2026.6.1@sha256:6d91c121b803126f7a5344005d17a9324788fc09d305b6e2560ec6040a7ae283
+    image: cloudflare/cloudflared:2026.7.1@sha256:188bb03589a32affed3cf4d0590565ffe67b78866e6b5582574afab2b705bafe
     labels:
       - com.smoochy.komodo.restore_stack=cloudflared
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png

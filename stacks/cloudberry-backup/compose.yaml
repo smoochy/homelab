@@ -42,7 +42,7 @@ services:
       - WEB_LISTENING_PORT=5800
       - WEB_LOCALHOST_ONLY=0
       - WEB_NOTIFICATION=0
-    image: jlesage/cloudberry-backup:v26.07.2@sha256:cb11866bfee21dbfd9e42bbdd1a5158f0ed1b775088bd43d8c656b105f60be19
+    image: jlesage/cloudberry-backup:v26.07.3@sha256:16504b818974d4d73db1c2dd6e7557b2ad4ccf4a69f360ee7bfae73bb4d17eab
     networks:
       smoonet:
     ports:

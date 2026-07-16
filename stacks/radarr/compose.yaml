@@ -13,7 +13,7 @@ services:
       - PUID=99
       - TZ=Europe/Berlin
       - UMASK=022
-    image: ghcr.io/linuxserver/radarr:6.2.1.10461-ls309@sha256:28852d0eacababc206762af48fe86d78594a4f434cc46b358f9764a857098662
+    image: ghcr.io/linuxserver/radarr:6.3.0.10514-ls311@sha256:2b2c1c05eb3f648d2c80dfab9486147dd7bb0ad4d77fa972fc1c5de8f1da3738
     networks:
       - smoonet
     ports:

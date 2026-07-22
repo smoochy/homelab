@@ -71,10 +71,10 @@ The repository currently spans several homelab areas:
   `komodo`, `authentik`, `homepage`, `dozzle`
 - Media, requests, indexing, and adjacent tooling:
   `radarr`, `sonarr`, `sabnzbd`, `prowlarr`, `seerr`, `episeerr`, `plex`,
-  `tautulli`, `tracearr`, `umlautadaptarr`, `notifiarr`, `yamtrack`
+  `tautulli`, `tracearr`, `umlautadaptarr`, `notifiarr`
 - Utility and infrastructure services:
   `mosquitto`, `registry`, `speedtest-tracker`, `homebridge`,
-  `changedetection-io`, `filebrowser-pnp`, `cloudberry-backup`, `uptime-kuma`,
+  `changedetection-io`, `cloudberry-backup`, `uptime-kuma`,
   `apprise`
 
 Not every stack is required. The repository is modular, so individual stacks

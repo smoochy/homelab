@@ -33,14 +33,28 @@ Renovate `stability-days`:
 - metadata-only PR edits do not reset the timers
 
 The `pr-age-gate` workflow refreshes those statuses on PR events and on a
-schedule. The `timed-pr-automerge` workflow evaluates all non-preview PRs and
-merges most eligible PRs only when the current head SHA is at least 3 days old,
-the PR is mergeable, all merge-relevant checks are green, and no human review
-blocker remains.
+schedule. The `docker-pr-age-24h` check above is unrelated to merge timing —
+it only tracks how long the current head SHA has sat still.
 
-`ghcr.io/smoochy/mengram` is the narrow fast-follower exception to that default
-merge-age policy. Its Renovate PRs can merge once the current head SHA is at
-least 24 hours old and the normal merge checks are otherwise green.
+The `timed-pr-automerge` workflow evaluates all non-preview PRs against a
+separate merge clock. That clock starts at the PR's creation time and only
+moves forward when a retitle shows Renovate changed the version target it is
+proposing — a head-SHA-only rebase (e.g. a new vulnerability alert) does not
+reset it. A PR becomes merge-eligible once that clock has aged past its
+required grace period, it is mergeable, all merge-relevant checks are green,
+and no human review blocker remains. The grace period depends on the
+Renovate-assigned update type, recorded via the `renovate:major` /
+`renovate:minor` labels that `config.js` and `config.fleet.js` attach:
+
+- 48 hours for `renovate:major` PRs
+- 24 hours for `renovate:minor` PRs (minor, patch, pin, digest, bump,
+  rollback, replacement, lockFileMaintenance)
+- 3 days as the fallback when neither label is present
+
+`ghcr.io/smoochy/mengram` is the narrow fast-follower exception to that
+label-driven policy. Its Renovate PRs can merge once their merge clock is at
+least 24 hours old, regardless of update type, as long as the normal merge
+checks are otherwise green.
 
 `pr-age-gate` concurrency is isolated per PR for `pull_request` runs and per
 ref for scheduled or manual runs so parallel Renovate PRs do not cancel each

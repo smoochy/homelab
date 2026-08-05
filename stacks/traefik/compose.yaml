@@ -1,7 +1,7 @@
 services:
   traefik:
     container_name: traefik
-    image: traefik:v3.7.9@sha256:652929a140a32d7cafafb13c6cdfab5376cfeff800f51397b87b524501ed02a8
+    image: traefik:v3.7.10@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
     logging:
       driver: "json-file"
       options:
@@ -112,7 +112,7 @@ services:
     container_name: traefik-manager
     depends_on:
       - traefik
-    image: ghcr.io/chr0nzz/traefik-manager:1.8.0@sha256:241f4327b4ff0bdeb17827b93d7f16bebcea8bc0c45d8f3f8de14c985ac4b05a
+    image: ghcr.io/chr0nzz/traefik-manager:1.9.0@sha256:8c5b874a6516bde8c0bdf7f7d2be8de038f7ffd44f0a681b874eecf10d644760
     restart: unless-stopped
 
     # Network

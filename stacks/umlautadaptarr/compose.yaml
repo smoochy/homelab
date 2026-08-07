@@ -23,7 +23,7 @@ services:
       - SONARR__ENABLED=true
       - SONARR__HOST=http://sonarr:8989
       - TZ=Europe/Berlin
-    image: pcjones/umlautadaptarr:0.7.5@sha256:2c6689d49afe51fcaa5e8a27e139855e0c8782e1e42ec595d8694b74094f991f
+    image: pcjones/umlautadaptarr:0.7.6@sha256:67da75db94795ef250b6a3ec9ddd25f3d0848329d48c0b8884762069ae93d08c
     networks:
       smoonet:
     ports:

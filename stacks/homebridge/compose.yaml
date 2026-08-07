@@ -13,7 +13,7 @@ services:
       - TCP_PORT_8581=8581
       - TZ=Europe/Berlin
       - UMASK=0000
-    image: homebridge/homebridge:2026-07-31@sha256:d4f3579fc09c8d43d6956c8c970351f510096b9d990c53280d2c27c1e77bfbef
+    image: homebridge/homebridge:2026-08-05@sha256:540484a2f15b61184804daeacc705dc86d3db811182d4b46d3deb524647ff29a
     # Keep HomeKit/LAN discovery on br0, but use smoonet for Docker-internal
     # services like mosquitto. MQTT clients inside Homebridge should target the
     # broker hostname `mosquitto`, not the host LAN IP.

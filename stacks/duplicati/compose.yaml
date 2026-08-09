@@ -1,7 +1,7 @@
 services:
   duplicati:
     container_name: duplicati
-    image: ghcr.io/linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls303@sha256:111ed163385f8eaa0aed3e503064adb859f7f8e43cf42a0caa021d16fc5bb9e1
+    image: ghcr.io/linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls304@sha256:9166c91eeef6965acf1b80f694ab03738fc143d1ff4e7be0c1d6a1bc89a24ed3
     restart: unless-stopped
     deploy:
       resources:

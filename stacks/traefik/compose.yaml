@@ -112,7 +112,7 @@ services:
     container_name: traefik-manager
     depends_on:
       - traefik
-    image: ghcr.io/chr0nzz/traefik-manager:1.9.1@sha256:47e90b6d1221587c4f43a8410a2719095affbbed55950f078306e6204fd94489
+    image: ghcr.io/chr0nzz/traefik-manager:1.10.0@sha256:2522dbc1a4386ec1d55ab99ffc8752f6811c6d5cfe0bd0a378d42c012999241a
     restart: unless-stopped
 
     # Network

@@ -136,7 +136,7 @@ services:
     container_name: sabnzbd
     depends_on:
       - gluetun
-    image: ghcr.io/linuxserver/sabnzbd:5.0.4-ls258@sha256:c2f1826a3d231b9506554a60447e763157fd8ba4f600a4a864d6d0ddae00a0aa
+    image: ghcr.io/linuxserver/sabnzbd:5.1.0-ls266@sha256:b0f9755d795913bd26ae3f3a12805668ab0681ab847a7624568559c573fc7cae
     restart: unless-stopped
 
     # Network: Share network stack with gluetunvpn (VPN routing)

@@ -18,7 +18,9 @@ rest of the Docker updates in this repository:
 - Because Renovate itself runs inside GitHub Actions, that validation workflow
   is dispatched explicitly from the Renovate job instead of relying on a
   follow-up PR event from `GITHUB_TOKEN`.
-- Once that check is green, Renovate merges the PR on the next Renovate run.
+- A repository-owned rolling status check waits until the PR has proposed its
+  current version target for at least 24 hours.
+- Once both are green, Renovate merges the PR on the next Renovate run.
 - After merge, the public mirror receives a direct commit on `main` without
   going through the shared preview PR, even if that preview PR is already open
   for unrelated changes.
@@ -27,14 +29,17 @@ rest of the Docker updates in this repository:
 
 1. Renovate detects a new `metabase/metabase` tag or digest and creates a PR.
 2. The Renovate workflow dispatches `metabase-renovate-validate` for that PR.
-3. The validation workflow validates:
+3. The `pr-age-gate` workflow ensures the PR carries both:
+   - `repo/pr-head-age-anchor`
+   - `renovate/docker-pr-age-24h`
+4. The validation workflow validates:
    - only `stacks/crowdsec/compose.yaml` changed
    - every changed image line is a `metabase/metabase` image line
    - the sanitized public export still builds successfully
-4. Renovate observes the green check and merges the PR on its next run.
-5. The merge to private `main` is picked up by `public-preview`, either via the
+5. Renovate observes the green checks on a later run and merges the PR.
+6. The merge to private `main` is picked up by `public-preview`, either via the
    normal `push` trigger or via the dedicated post-`renovate` workflow trigger.
-6. If the merge is a Metabase-only image update, the public export is committed
+7. If the merge is a Metabase-only image update, the public export is committed
    directly to the public repo `main`.
 
 ## Validation Scope
@@ -48,6 +53,19 @@ PR shape instead of trying to become a general Renovate CI framework.
 - It fails if the diff contains non-image changes or non-Metabase image changes.
 - It reuses the same export scripts that power the public mirror workflow so
   the merge gate reflects the real publish path.
+- It says nothing about whether the new Metabase image actually runs, which is
+  why the 24-hour age gate applies to Metabase like everything else.
+
+## Age Gate
+
+Unlike every other Docker update, the Metabase gate ages off the merge clock
+rather than the per-SHA head anchor. Renovate merges Metabase PRs itself, so
+`renovate/docker-pr-age-24h` is the only place a soak period is enforced on
+that path - and an anchor that restarts on every Renovate rebase would leave a
+frequently rebased PR permanently pending. The merge clock starts at PR
+creation and moves forward only when a retitle shows the proposed version
+target itself changed. See `uses_merge_clock_for_docker_gate()` and
+`merge_clock_start()` in `scripts/pr_age_policy.py`.
 
 ## Notifications
 
@@ -63,6 +81,9 @@ The silent behavior only applies to Metabase automation inside this repository.
 
 - PR creation: Renovate raises a normal PR for Metabase.
 - Silent PR: the PR is bot-authored and not assigned to `smoochy`.
+- Age gate: the PR stays pending until it has proposed its current version
+  target for at least 24 hours, and a Renovate rebase inside that window does
+  not restart the clock.
 - Validation success: the dedicated check passes for a valid image/digest-only
   Metabase update.
 - Automerge: Renovate merges the PR on the next run after the check turns

@@ -91,7 +91,11 @@ Metabase uses a narrower flow than the rest of the Renovate-managed images.
 - The Renovate workflow explicitly dispatches that validation because PR events
   created by the workflow token do not automatically fan out into another
   workflow run.
-- Once the check is green, Renovate merges the PR on its next run.
+- The repository-owned `renovate/docker-pr-age-24h` status enforces the same
+  24-hour wait as every other Docker update, measured from when the PR started
+  proposing its current version target rather than from the head SHA, so a
+  Renovate rebase does not restart it.
+- Once both are green, Renovate merges the PR on its next run.
 - After merge, image-only Metabase updates publish directly to the public repo
   even if the shared public preview PR is already open for unrelated changes.
 

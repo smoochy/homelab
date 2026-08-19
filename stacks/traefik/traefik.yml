@@ -142,6 +142,9 @@ global:
 log:
   compress: true
   level: "INFO"
+  # JSON so the level word is machine-readable in the log store instead of an ANSI-wrapped `ERR`.
+  # `log:` accepts only `common` or `json` - unlike accessLog, there is no `logfmt` here.
+  format: json
   # Not used, so Dozzle can pick up the logs from the container's stdout
   #filePath: "/etc/traefik/logs/traefik.log"
   #maxAge: 14

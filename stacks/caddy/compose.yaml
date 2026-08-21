@@ -6,7 +6,7 @@ services:
       - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile # Caddyfile für externe Dienste
       - CADDY_INGRESS_NETWORKS=smoonet # caddy-docker-proxy: Netzwerk für Routing
       - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
-      - DOCKER_HOST=tcp://dockerproxy:2375 # Docker integration
+      - DOCKER_HOST=tcp://dockerproxy-ro:2375 # Docker integration, read-only proxy
       - HOST_CONTAINERNAME=caddy
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid

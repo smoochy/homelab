@@ -19,8 +19,8 @@ Install the VS Code extension:
 This workflow also expects the folder `.vscode/.scripts` to exist in the
 repository and to contain these two PowerShell scripts:
 
-- `encrypt-env.ps1`
-- `decrypt-env.ps1`
+- `encrypt.ps1`
+- `decrypt.ps1`
 
 The same setup can be used on Windows and macOS. The scripts set
 `SOPS_AGE_KEY_FILE` per operating system and call `sops` through `pwsh`.
@@ -71,13 +71,13 @@ Add these commands to your global VS Code user settings:
 ```json
 "filewatcher.commands": [
   {
-    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}/.vscode/.scripts/encrypt-env.ps1\" -InputFile \"${file}\"",
+    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}/.vscode/.scripts/encrypt.ps1\" -InputFile \"${file}\"",
     "event": "onFileChange",
     "isAsync": true,
     "match": "(^|[\\\\/])\\.env$"
   },
   {
-    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}/.vscode/.scripts/decrypt-env.ps1\" -InputFile \"${file}\"",
+    "cmd": "pwsh -NoProfile -File \"${workspaceRoot}/.vscode/.scripts/decrypt.ps1\" -InputFile \"${file}\"",
     "event": "onFileChange",
     "isAsync": true,
     "match": "\\.env\\.enc$"
@@ -94,6 +94,8 @@ That gives you this workflow:
 - editing `.env` updates `.env.enc`
 - editing `.env.enc` recreates a local decrypted file for inspection
 - Git tracks `.env.enc`, while `.env` stays ignored
+
+The encrypt helper refuses a line with an empty value and aborts the whole file, so an optional variable you do not set is commented out rather than left as a bare `KEY=`. When a save produces no `.env.enc` at all, that refusal is the first thing to check, followed by whether `filewatcher.commands` in the global VS Code user settings is still populated - an empty array silently disables the whole workflow.
 
 ## Key Material
 

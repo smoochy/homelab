@@ -30,6 +30,14 @@ services:
       - TZ=Europe/Berlin
       - UMASK=022
 
+    # Health probe against the sync service's own readiness endpoint.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
     # Resource limits (Compose style)
     deploy:
       resources:
@@ -70,7 +78,7 @@ services:
       - net.unraid.docker.webui=${ADGUARD_HOME_SYNC_UNRAID_WEBGUI_URL}
   adguard-home-unbound:
     container_name: adguard-home-unbound
-    image: ghcr.io/mainfrezzer/adguardhome:v0.107.78@sha256:a36aab08251b4cfa66b604dc7652929f622160fe8869eae0fb972f05ee00bb1d
+    image: ghcr.io/mainfrezzer/adguardhome:v0.107.79@sha256:664094ce269471004fb10b02e66fd90ef4839c710989534f239b664135150473
     restart: unless-stopped
 
     # Network config (macvlan/br0 mit fester IP)
@@ -96,6 +104,20 @@ services:
     volumes:
       - /mnt/user/appdata/adguard/config:/opt/adguardhome/conf
       - /mnt/user/appdata/adguard/workingdir:/opt/adguardhome/work
+
+    # Health probe. Two deviations, both measured on the live container:
+    # - The probe is HTTP, not DNS. A `nslookup` against 127.0.0.1 would be the
+    #   truer signal, but this image's BusyBox nslookup exits 0 even when the
+    #   server it queried is dead, which is an always-green check.
+    # - The target is /login.html rather than the /control API, because every
+    #   /control path answers 401 without credentials and would fail the probe.
+    #   localhost resolves to ::1 here, so the probe uses the literal 127.0.0.1.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/login.html || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     # Resource limits
     deploy:

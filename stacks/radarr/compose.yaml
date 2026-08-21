@@ -14,8 +14,12 @@ services:
       - TZ=Europe/Berlin
       - UMASK=022
     image: ghcr.io/linuxserver/radarr:6.3.0.10514-ls313@sha256:a45b5ab0f850f39edb4cc9c95bbd967b52ddc3d4574a4dfb45561177db6c88f4
+    # Network configuration. The address is pinned because upPollo runs inside the
+    # qBittorrent stack's VPN namespace, whose resolver is the tunnel's, so Docker DNS
+    # never resolves "radarr" there and the media server URL has to be a literal IP.
     networks:
-      - smoonet
+      smoonet:
+        ipv4_address: 172.18.0.10
     ports:
       - 7878:7878/tcp
     restart: unless-stopped

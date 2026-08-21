@@ -14,8 +14,13 @@ services:
       - TZ=Europe/Berlin
       - UMASK=022
     image: ghcr.io/linuxserver/prowlarr:2.5.2.5491-ls156@sha256:1295cff29d10b486c0d8324d1559a552140a5932bf8b3d87e398654414f63f92
+    # Network configuration. The address is pinned because qui runs inside the
+    # qBittorrent stack's VPN namespace, whose kill switch drops LAN egress and whose
+    # resolver is the tunnel's, so neither the LAN address nor the container name
+    # reaches Prowlarr from there - the indexer URL has to be a literal bridge IP.
     networks:
       smoonet:
+        ipv4_address: 172.18.0.50
     ports:
       - "9696:9696/tcp"
     restart: unless-stopped

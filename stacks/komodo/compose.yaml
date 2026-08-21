@@ -4,6 +4,7 @@
 
 ## This compose file will deploy:
 ##    1. Dockerproxy (https://docs.linuxserver.io/images/docker-socket-proxy/)
+##    1b. Dockerproxy-ro, the read-only twin for observing consumers
 ##    2. MongoDB
 ##    3. Komodo Core
 ##    4. Komodo Periphery
@@ -14,6 +15,17 @@ services:
     container_name: dockerproxy
     restart: unless-stopped
     environment:
+      # Compose materialises a `configs:` entry that carries inline `content:` by
+      # writing the file into the created container over PUT /containers/*/archive.
+      # Without this grant the proxy answers 403 and every stack that renders a
+      # config from .env - qbittorrent's wg0.conf among them - is created but never
+      # starts. Strictly weaker than the EXEC grant already given below.
+      - ALLOW_ARCHIVE=1   # Required for compose configs with inline content
+      # Komodo itself reads container logs over this proxy: Periphery has no socket
+      # mount and runs `docker logs` against DOCKER_HOST, so a GetContainerLog call
+      # arrives here as GET /containers/<id>/logs. Without the grant Komodo's own log
+      # view is answered with a 403. This is not only a Dozzle grant - it stays.
+      - ALLOW_LOGS=1      # Required for Komodo (and Dozzle) log streaming
       - ALLOW_START=1     # Start containers/stacks
       - ALLOW_STOP=1      # Stop containers/stacks
       - ALLOW_RESTARTS=1  # Restart containers
@@ -43,6 +55,51 @@ services:
       - TZ=Europe/Berlin  # optional
       - VERSION=1         # Requesting Docker API Information
       - VOLUMES=1         # Required for managing persistent storage
+    # Health probe. /_ping is the Docker API's own ping, proxied through. It proves
+    # the proxy is up and reaching the socket - not that the grants above are right,
+    # which is a config question no probe can answer.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2375/_ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - smoonet
+
+  # Read-only twin of the proxy above, for consumers that only observe Docker.
+  # It exists so that recreating `dockerproxy` during a Komodo deploy cannot take
+  # Traefik's and Caddy's service discovery down with it, which is what turned a
+  # single stack deploy into a host-wide outage on 2026-08-19.
+  # POST=0 makes every reachable endpoint a GET, so the grants below are the whole
+  # attack surface. The `:ro` on the socket mount is cosmetic - it does not stop
+  # writes through the API, POST=0 does.
+  dockerproxy-ro:
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: dockerproxy-ro
+    restart: unless-stopped
+    environment:
+      - ALLOW_LOGS=1      # Dozzle streams container logs over this proxy
+      - AUTH=0
+      - CONTAINERS=1      # Container list and inspect: discovery, dashboards, monitors
+      - EVENTS=1          # Live container events, so discovery reacts without polling
+      - INFO=1            # Daemon information
+      - LOG_LEVEL=info
+      - NETWORKS=1        # Network list, required to resolve routing networks
+      - PING=1            # Health check capability
+      - POST=0            # No writes at all: this is what makes the proxy read-only
+      - TZ=Europe/Berlin
+      - VERSION=1         # Docker API version negotiation
+    # Same probe as the write proxy above: /_ping proves liveness, not that POST=0
+    # and the grants are still correct.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2375/_ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -53,7 +110,7 @@ services:
     container_name: komodo-mongo-db
     labels:
       - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
-      - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/mongodb.png"
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png
     command: --quiet --wiredTigerCacheSizeGB 0.25
     restart: unless-stopped
     # ports:
@@ -61,6 +118,16 @@ services:
     volumes:
       - /mnt/user/appdata/komodo/mongo-config:/data/db
       - /mnt/user/appdata/komodo/mongo-db:/data/configdb
+    # Health probe. Deviation from the HTTP default: this is a database with no HTTP
+    # surface, so the native client answers instead, mirroring pg_isready on the
+    # Postgres services. mongosh starts a Node process per probe, which is the most
+    # expensive check in this repository - accepted, the image ships no lighter one.
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand({ping:1})\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
@@ -105,8 +172,8 @@ services:
       - traefik.docker.network=smoonet
       ## End Traefik Config
       - net.unraid.docker.managed=composeman
-      - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png"
-      - net.unraid.docker.webui="${KOMODO_UNRAID_WEBGUI_URL}"
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png
+      - net.unraid.docker.webui=${KOMODO_UNRAID_WEBGUI_URL}
     networks:
       - smoonet
     restart: unless-stopped
@@ -116,6 +183,16 @@ services:
       - dockerproxy
     ports:
       - 9120:9120
+    # Health probe. Deviation from the wget default: this image ships curl only.
+    # /version is the one endpoint Core answers outside its single-page app - /health
+    # and /api/health are 404 - so it stands in for a readiness endpoint. It proves
+    # the HTTP server is up, not that the database connection behind it is.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9120/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     environment:
       - DOCKER_HOST=tcp://dockerproxy:2375
       - KOMODO_DATABASE_ADDRESS=mongo:27017
@@ -130,7 +207,13 @@ services:
       - /mnt/user/appdata/komodo/config:/config
       # Komodo Core v2 requires the keys directory to be mounted at /config/keys, even if it's empty.
       - /mnt/user/appdata/komodo/config/keys:/config/keys
-      ## Allows for systemd Periphery connection at 
+      # Read-only view of the repositories Periphery clones. Core does not need
+      # them to deploy, but the `trigger_procedure` action runs in Core's Deno
+      # runtime and diffs the pulled commits here to decide which stacks changed.
+      # Without it every push sweeps all ~29 stacks. See the runbook at
+      # docs/superpowers/runbooks/update-stacks-action.md.
+      - /mnt/user/appdata/komodo/repos:/etc/komodo/repos:ro
+      ## Allows for systemd Periphery connection at
       ## "https://host.docker.internal:8120"
       # extra_hosts:
       #   - host.docker.internal:host-gateway
@@ -142,10 +225,19 @@ services:
     container_name: komodo-periphery
     labels:
       - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
-      - net.unraid.docker.icon="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png"
-      - net.unraid.docker.webui="${KOMODO_UNRAID_WEBGUI_URL}"
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png
+      - net.unraid.docker.webui=${KOMODO_UNRAID_WEBGUI_URL}
     restart: unless-stopped
     env_file: .env
+    # Health probe. Two deviations: the image ships curl but the endpoint is HTTPS
+    # with a self-signed certificate, hence -k, and /version is the only path
+    # Periphery answers without authentication - /health, /ping and /api are 404.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSk https://localhost:8120/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     environment:
       - DOCKER_HOST=tcp://dockerproxy:2375
       - PERIPHERY_REPO_DIR=/etc/komodo/repos

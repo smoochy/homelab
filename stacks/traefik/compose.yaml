@@ -2,16 +2,42 @@ services:
   traefik:
     container_name: traefik
     image: traefik:v3.7.10@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
+    # Second pilot for the syslog log driver (#978). speedtest-tracker proved the
+    # mechanism but writes 20 KB/day, so it never touched max-buffer-size. Measured on
+    # the host, that buffer holds roughly 20k lines and then drops silently, with no
+    # error at either end. Traefik is ~90% of the fleet's log volume and the only stack
+    # that can plausibly reach it, so it burns in before the driver becomes the
+    # daemon-wide default.
+    #
+    # The tag has to use index with a quoted key: the compose project label contains
+    # dots and Go template field access cannot address it. A failing log-opt template is
+    # rejected at container create, which is exactly why this is piloted per stack.
+    #
+    # This replaces the json-file block that stood here since 386e264. That block was
+    # rotation bounding, never a deliberate opt-out, and a per-container logging block
+    # overrides the daemon default - it would have kept the one source this effort most
+    # wants in the store out of it while the rollout looked green.
     logging:
-      driver: "json-file"
+      driver: syslog
       options:
-        max-file: "10"
-        max-size: "100m"
+        syslog-address: "udp://127.0.0.1:1514"
+        syslog-format: rfc5424micro
+        mode: non-blocking
+        max-buffer-size: 4m
+        # Required for the tag below. .ExtraAttributes carries only the labels named
+        # here, so without this the project half of the tag renders empty and every
+        # record lands under ".traefik" instead of "traefik.traefik".
+        labels: com.docker.compose.project
+        tag: '{{ index (.ExtraAttributes nil) "com.docker.compose.project" }}.{{ .Name }}'
     restart: unless-stopped
 
-    # Network
+    # Network: the address is pinned because qBittorrent's WebUI trusts it as a
+    # reverse proxy by literal address, and a floating IP would silently turn
+    # X-Forwarded-For back off. Chosen outside the dynamic allocator range
+    # (172.18.0.2 through .45) and clear of Prowlarr on .50 and gluetun on .51.
     networks:
       smoonet:
+        ipv4_address: 172.18.0.52
     # Ports (host binding)
     ports:
       - "443:443/tcp" # HTTPS
@@ -23,16 +49,33 @@ services:
     volumes:
       - /mnt/user/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
       - /mnt/user/appdata/traefik/plugins-storage:/plugins-storage # Plugin cache: start survives DNS/internet outage, no re-download
+      - /mnt/user/appdata/traefik/plugins-local:/plugins-local:ro # Plugin sources for experimental.localPlugins; a container-internal symlink does not survive a recreate
 
     # Environment variables
     environment:
       - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN} # Cloudflare API token (sensitive!)
       - DOCKER_API_VERSION=1.54
-      - DOCKER_HOST=tcp://dockerproxy:2375 # Docker socket proxy
+      - DOCKER_HOST=tcp://dockerproxy-ro:2375 # Docker socket proxy, read-only
       - HOST_CONTAINERNAME=traefik
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
+
+    # Health probe against Traefik's own /ping on the internal `traefik` entrypoint,
+    # which api.insecure already creates on 8080. It needs `ping:` in the static
+    # config, which is host state under /mnt/user/appdata/traefik/traefik.yml and is
+    # mirrored into traefik.yml beside this file. /api/overview was rejected as a
+    # substitute: it answers 200 while routing is degraded, and it stops working the
+    # day api.insecure is turned off. localhost resolves here, but the literal
+    # 127.0.0.1 is used per the house rule after batch 1. The probe answers as soon as
+    # the process listens, so it reports liveness and not router convergence.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
     # Resource limits
     deploy:
       resources:
@@ -100,6 +143,18 @@ services:
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
 
+    # Health probe. Deviation from the HTTP default: this container is a periodic
+    # downloader with no listening port. The image bakes /usr/bin/healthcheck.sh,
+    # which checks that the database files were refreshed, and that is the only
+    # meaningful signal here - declared explicitly so an image bump cannot change it
+    # unnoticed.
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
     # Resource limits
     deploy:
       resources:
@@ -112,7 +167,7 @@ services:
     container_name: traefik-manager
     depends_on:
       - traefik
-    image: ghcr.io/chr0nzz/traefik-manager:1.10.1@sha256:f7cdf9088c527554296d6aa8839f066b490069014bdb1fa0faf1142fcd3732e8
+    image: ghcr.io/chr0nzz/traefik-manager:1.10.2@sha256:014756f90b73216d8ad925f704b6cc3c3abe08666cc120be1c743d522adfe89c
     restart: unless-stopped
 
     # Network
@@ -137,6 +192,8 @@ services:
       - CERT_RESOLVER=cloudflare
       - CONFIG_PATH=/app/traefik/dynamic.yml
       - COOKIE_SECURE=true
+      # Stays on the write proxy: RESTART_METHOD=proxy below means this container
+      # restarts Traefik over the Docker API, which the read-only proxy refuses.
       - DOCKER_HOST=tcp://dockerproxy:2375
       - DOMAINS=${TRAEFIK_MANAGER_DOMAINS}
       - HOST_CONTAINERNAME=${TRAEFIK_MANAGER_SERVICE}
@@ -147,6 +204,18 @@ services:
       - TRAEFIK_API_URL=http://traefik:8080
       - TRAEFIK_CONTAINER=traefik
       - TZ=Europe/Berlin
+
+    # Health probe. The image bakes `curl -f http://localhost:5000/`; declared here in
+    # the house wget form against the same target, so the probe lives in the
+    # repository. The UI is the only surface this image exposes - it has no dedicated
+    # health endpoint. localhost resolves to ::1 here, where it does not listen, so
+    # the probe uses the literal 127.0.0.1.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     # Resource limits
     deploy:
@@ -220,6 +289,16 @@ services:
       - NODE_ENV=production
       - TZ=Europe/Berlin
 
+    # Health probe. Deviation from the `localhost` default: inside this container
+    # localhost resolves to ::1, where the dashboard does not listen, so the probe
+    # uses the literal 127.0.0.1. The UI root is the only surface it exposes.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
     # Resource limits
     deploy:
       resources:
@@ -284,6 +363,15 @@ services:
       - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
       - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
       - TZ=Europe/Berlin
+
+    # Health probe against the agent API the dashboard reads from. The agent exposes
+    # no dedicated health path, so the API root stands in for one.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     # Resource limits
     deploy:

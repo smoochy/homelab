@@ -16,8 +16,12 @@ services:
       - TZ=Europe/Berlin
       - UMASK=022
     image: ghcr.io/linuxserver/sonarr:4.0.19.2979-ls321@sha256:729b8f38d99b3af0c02bbb778f2184ed426676ecaad1fa87d12fb5347e36892a
+    # Network configuration. The address is pinned because upPollo runs inside the
+    # qBittorrent stack's VPN namespace, whose resolver is the tunnel's, so Docker DNS
+    # never resolves "sonarr" there and the media server URL has to be a literal IP.
     networks:
       smoonet:
+        ipv4_address: 172.18.0.15
     ports:
       - "8989:8989/tcp"
     restart: unless-stopped

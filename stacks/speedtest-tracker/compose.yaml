@@ -1,8 +1,25 @@
 services:
   speedtest-tracker:
     container_name: speedtest-tracker
-    image: ghcr.io/linuxserver/speedtest-tracker:v1.14.7-ls165@sha256:10a08318f473e65d29c21326387b127ac4bb2abf6574187541f5422ce333c399
+    image: ghcr.io/linuxserver/speedtest-tracker:v1.14.8-ls168@sha256:4829a2ea61edd50370adc58050e6fbb93c96ed0c5d0215673b41df8347c9b2a2
     restart: unless-stopped
+
+    # Pilot for the fleetwide log-driver switch (#978). This stack carries the syslog driver
+    # alone until it has burned in; only then does the same configuration become the daemon
+    # default. Docker's dual logging keeps `docker logs` and Dozzle working unchanged.
+    #
+    # The tag uses `index` rather than field access because the compose project arrives under
+    # the literal key `com.docker.compose.project`, and Go template field syntax cannot read a
+    # key containing dots. `labels=` is what makes that key reach the driver at all.
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "udp://127.0.0.1:1514" # host publish of the victorialogs stack
+        syslog-format: rfc5424micro
+        mode: non-blocking # a stalled log target must never stall the container
+        max-buffer-size: 4m
+        labels: com.docker.compose.project
+        tag: '{{ index (.ExtraAttributes nil) "com.docker.compose.project" }}.{{ .Name }}'
 
     # Network
     networks:

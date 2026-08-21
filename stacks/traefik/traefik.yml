@@ -64,6 +64,7 @@ entryPoints:
         - "104.16.0.0/13"
         - "104.24.0.0/14"
         - "172.64.0.0/13"
+        - "131.0.72.0/22"
         # Cloudflare IPv6
         - "2400:cb00::/32"
         - "2606:4700::/32"
@@ -71,6 +72,7 @@ entryPoints:
         - "2405:b500::/32"
         - "2405:8100::/32"
         - "2a06:98c0::/29"
+        - "2c0f:f248::/32"
         # END CLOUDFLARE IPs (managed by script)
         # Until then, keep this list updated manually or replace it with your own automation.
     http:
@@ -124,14 +126,21 @@ entryPoints:
 
 
 
+# Plugins load from disk, never from the registry. The remote path (experimental.plugins) is
+# not usable here: plugins.traefik.io answers the archive download in 13-30s while Traefik's
+# client gives up after roughly 10s, the timeout is not configurable, and pre-seeding the
+# archive under plugins-storage does not help either, because the registry ignores the
+# conditional X-Plugin-Hash header and Traefik calls ResetAll() on a failed download, which
+# wipes the seeded tree. localPlugins is Traefik's supported offline path and is what runs here.
+# The sources live on the host under /mnt/user/appdata/traefik/plugins-local and are mounted
+# into the container at /plugins-local, which is the path Traefik resolves relative to its
+# working directory. The mount is required: a container-internal symlink does not survive a
+# recreate.
+# traefik-warp is deliberately not loaded, see rules/base.yml for the reasoning.
 experimental:
-  plugins:
+  localPlugins:
     bouncer:
       moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
-      version: v1.5.1
-    traefikwarp:
-      moduleName: github.com/l4rm4nd/traefik-warp
-      version: v1.1.5   # Or latest version from Plugin-Store
 
 
 global:
@@ -142,6 +151,7 @@ global:
 log:
   compress: true
   level: "INFO"
+  format: json
   # Not used, so Dozzle can pick up the logs from the container's stdout
   #filePath: "/etc/traefik/logs/traefik.log"
   #maxAge: 14
@@ -149,12 +159,19 @@ log:
   #maxSize: 100
 
 
+# Serves /ping on the internal `traefik` entrypoint that api.insecure already creates on
+# :8080. It exists for the container's own healthcheck in compose.yaml and answers as
+# soon as the process listens, independently of router convergence.
+ping: {}
+
+
 providers:
   docker:
-    # Traefik shall communicate with the Docker daemon via the TCP socket exposed by the docker-proxy container (Deployed by Komodo on Host)
-    endpoint: "tcp://dockerproxy:2375"
+    # Traefik shall communicate with the Docker daemon via the TCP socket exposed by the read-only docker-proxy container (Deployed by Komodo on Host)
+    # DOCKER_HOST in compose.yaml wins over this setting, so both are kept in sync (measured 2026-08-19).
+    endpoint: "tcp://dockerproxy-ro:2375"
     exposedByDefault: false
     network: "smoonet"
   file:
-    filename: "/etc/traefik/dynamic.yml"
+    directory: "/etc/traefik/rules"
     watch: true

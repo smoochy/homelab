@@ -1,8 +1,11 @@
 services:
   dozzle:
     container_name: dozzle
-    image: amir20/dozzle:v10.7.2@sha256:01f9018ffdaa0ec523f9a91dea3eff65b25cdb5f0566ac6d5a2cb4cf591e35e9
+    image: amir20/dozzle:v10.7.3@sha256:c32ca7a443796de62a07afd621b17b6c6c073320cd8431493bb1fd84e3a1eff8
     restart: unless-stopped
+    # No healthcheck on purpose: the image is distroless and carries no shell and
+    # no probe tool at all, so the only check that could be written here would be
+    # green whatever the container is doing. See homelab-private#877.
 
     # Network
     networks:
@@ -17,12 +20,13 @@ services:
     environment:
       - DOZZLE_AUTH_PROVIDER=simple
       - DOZZLE_BASE=/
-      - DOZZLE_ENABLE_ACTIONS=true
-      - DOZZLE_ENABLE_SHELL=true
+      # Actions (start/stop/restart) and shell are deliberately off: Dozzle now reads
+      # through the read-only proxy, where both would only ever answer 403. Komodo
+      # offers the same two operations on the write path.
       - DOZZLE_KEY=${DOZZLE_KEY} # Sensitive auth key
       - DOZZLE_LEVEL=info
       - DOZZLE_NO_ANALYTICS=true
-      - DOZZLE_REMOTE_HOST=tcp://dockerproxy:2375 # Docker socket proxy
+      - DOZZLE_REMOTE_HOST=tcp://dockerproxy-ro:2375 # Docker socket proxy, read-only
       - DOZZLE_TAILSIZE=300
       - HOST_CONTAINERNAME=Dozzle
       - HOST_HOSTNAME=homelab-host

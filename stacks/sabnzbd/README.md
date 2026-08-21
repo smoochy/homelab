@@ -28,6 +28,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - [Download Speed Monitor and Recovery Script](./scripts/monitor_sab_speed/README.md): Host-side throughput monitoring with controlled recovery paths for slow SABnzbd runs.
 - [ISO Extractor Post-Processing Script](./scripts/extract_iso/README.md): SABnzbd post-processing helper that extracts ISO payloads and removes the source image afterwards.
 - [Delete Items From History Scripts](./scripts/delete_item_from_history/README.md): Queue-based cleanup helpers for selected SABnzbd history categories.
+- [upPollo Staging Post-Processing Script](./scripts/uppollo_stage/README.md): Captures the original release name of a finished job and filters it down to what the tracker permits.
 
 ## Komodo Notes
 

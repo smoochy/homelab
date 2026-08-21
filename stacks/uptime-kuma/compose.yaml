@@ -5,8 +5,13 @@ services:
     restart: unless-stopped
 
     # Network configuration
+    # Pinned since the qbittorrent riders push their heartbeats here (#1045).
+    # Two of them run inside the tunnel namespace, whose resolver is the
+    # tunnel's and whose kill switch permits only the smoonet bridge - so they
+    # can reach this container by address and by nothing else.
     networks:
-      - smoonet
+      smoonet:
+        ipv4_address: 172.18.0.53
 
     # Port mapping
     ports:
@@ -25,6 +30,17 @@ services:
 
     # Resource limits
     pids_limit: 2048
+
+    # Health probe. Two deviations from the wget default, both forced by the image:
+    # it ships curl but no wget, and it bakes its own `extra/healthcheck` script.
+    # The baked check is declared here explicitly so the probe lives in the
+    # repository and an image bump cannot change it unnoticed.
+    healthcheck:
+      test: ["CMD", "extra/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     # Unraid-specific labels
     ## Start Traefik Config

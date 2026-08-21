@@ -5,11 +5,15 @@ services:
     image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
     restart: unless-stopped
 
-    # Network
+    # Network configuration. The address is pinned because SABnzbd shares this
+    # namespace and is addressed from inside the qBittorrent stack's VPN namespace,
+    # whose kill switch drops LAN egress and whose resolver is the tunnel's, so
+    # neither 192.0.2.99 nor the container name works there.
     networks:
       smoonet:
         aliases:
           - gluetun
+        ipv4_address: 172.18.0.51
 
     # Ports
     ports:
@@ -136,7 +140,7 @@ services:
     container_name: sabnzbd
     depends_on:
       - gluetun
-    image: ghcr.io/linuxserver/sabnzbd:5.1.0-ls266@sha256:b0f9755d795913bd26ae3f3a12805668ab0681ab847a7624568559c573fc7cae
+    image: ghcr.io/linuxserver/sabnzbd:5.1.1-ls267@sha256:8fb83ceffaca6b9c0cc8d86b1acb525818fe3ce1e5a5ee9e9dd1227a26dce57d
     restart: unless-stopped
 
     # Network: Share network stack with gluetunvpn (VPN routing)
@@ -148,6 +152,10 @@ services:
       - /mnt/user/data/:/data/ # Downloads/incomplete
     # Environment variables
     environment:
+      # The post-processing script reports a release it could not stage here
+      # (#1121). The container address, not the LAN hostname: this service runs
+      # in gluetun's namespace, whose resolver is the tunnel's.
+      - APPRISE_ENDPOINT=${APPRISE_ENDPOINT}
       - HOST_CONTAINERNAME=sabnzbd
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid

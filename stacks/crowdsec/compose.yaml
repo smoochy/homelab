@@ -12,6 +12,22 @@ services:
       - PUID=99
       - TZ=Europe/Berlin
       - UID=99
+      # Write-ahead logging for the SQLite state database. Without it a single
+      # writer takes an exclusive lock on the whole file, and CrowdSec holds
+      # more than a dozen connections to it at once - LAPI, metrics flush,
+      # alert flush, decision expiry and machine authentication all contend for
+      # the same lock, which surfaces as continuous "database is locked" errors
+      # and requests that only end when their retry deadline does. The image
+      # entrypoint translates this into db_config.use_wal in config.yaml.
+      - USE_WAL=true
+    # LAPI readiness. A 200 here proves the local API the bouncers talk to is
+    # serving, which is the part of CrowdSec whose silent death is invisible.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/crowdsecurity/crowdsec:v1.7.8@sha256:2f527c9bb8b367120eb08b82890aa912ce96bfa1ada93dda0721700e4b4e0dde
     labels:
       - com.smoochy.komodo.restore_stack=crowdsec
@@ -41,6 +57,15 @@ services:
       - MGID=98
       - MUID=99
       - TZ=Europe/Berlin
+    # Metabase boots the JVM, then migrates its application database, and only
+    # answers /api/health once both are done - hence the deviating start_period,
+    # measured against this container. Everything else is the house default.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
     image: metabase/metabase:v0.63.5.2@sha256:57adae701ff3ae88a4dde14c8dc4011eb0c2120a941e5031e7d30bb027edb77c
     networks:
       - smoonet
@@ -88,6 +113,9 @@ services:
       - crowdsec
     environment:
       - CROWDSEC_METRICS_URL=http://crowdsec:6060/metrics
+      # Stays on the write proxy: the access log shows this container issuing
+      # POST /containers/<id>/exec and POST /exec/<id>/start, which the read-only
+      # proxy answers with 403.
       - DOCKER_HOST=tcp://dockerproxy:2375
       - ENVIRONMENT=production
       - HOST_CONTAINERNAME=${CROWDSEC_MANAGER_SERVICE}
@@ -98,6 +126,15 @@ services:
       - TRAEFIK_DYNAMIC_CONFIG=/etc/traefik/dynamic.yml
       - TRAEFIK_STATIC_CONFIG=/etc/traefik/traefik.yml
       - TZ=Europe/Berlin
+    # The image bakes `curl -f http://localhost:${PORT:-8080}/health`. Declared here
+    # in the house wget form against the same endpoint, so the probe lives in the
+    # repository and an image bump cannot change it unnoticed.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/hhftechnology/crowdsec_manager:2.4.1@sha256:033dd76360e5f5da01b21084921e1f82cef226ebc53e33f77f4128da8d01be2e
     labels:
       - traefik.enable=true
@@ -155,6 +192,10 @@ services:
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
+    # No healthcheck on purpose. The bouncer runs on the host network and exposes no
+    # HTTP or local socket of its own, so every probe available here would answer for
+    # something other than the bouncer - an always-green check is worse than none.
+    # Its liveness is covered by the stack-health poller instead.
     image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.34-patch1@sha256:c33bae81fdade1e1c243946bedfcdb5b22a25c4fbd1ef166ce32935334d7575c
     labels:
       - com.smoochy.komodo.restore_stack=crowdsec

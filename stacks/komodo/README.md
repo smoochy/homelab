@@ -9,6 +9,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 ## Services
 
 - `dockerproxy`
+- `dockerproxy-ro`
 - `mongo`
 - `core`
 - `periphery`
@@ -19,6 +20,11 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 - Website: [https://docs.linuxserver.io/images/docker-socket-proxy/](https://docs.linuxserver.io/images/docker-socket-proxy/)
 - GitHub: [https://github.com/linuxserver/docker-socket-proxy](https://github.com/linuxserver/docker-socket-proxy)
+
+### `dockerproxy-ro`
+
+- Website: [https://komo.do/](https://komo.do/)
+- GitHub: [https://github.com/moghtech/komodo](https://github.com/moghtech/komodo)
 
 ### `mongo`
 

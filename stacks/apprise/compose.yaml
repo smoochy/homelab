@@ -1,7 +1,7 @@
 services:
   apprise:
     container_name: apprise
-    image: ghcr.io/caronc/apprise:v1.5.1@sha256:1871ed736799f6320d5061b72a60507f62c8747026e830175dc4b9f8adbf78dd
+    image: ghcr.io/caronc/apprise:v1.5.2@sha256:feb3ad42d280bca0c58fdff6f77f46e2586a65bbc6d2bff614d31245ff8a399c
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"
 
@@ -14,9 +14,12 @@ services:
     security_opt:
       - no-new-privileges:true
 
-    # Network configuration
+    # Network configuration. The address is pinned because the qBittorrent stack's
+    # sorter runs inside a VPN namespace whose resolver is the tunnel's, so Docker
+    # DNS never resolves "apprise" there and the endpoint has to be a literal IP.
     networks:
-      - smoonet
+      smoonet:
+        ipv4_address: 172.18.0.7
     ## Start Traefik Config
     labels:
       - traefik.enable=true
@@ -64,6 +67,16 @@ services:
     # Ephemeral runtime and temp files
     tmpfs:
       - /tmp
+
+    # Health probe. Deviation from the wget default: this image ships curl but no
+    # wget. /status is the API's own readiness endpoint, so a 200 proves the
+    # notification gateway can accept a payload, not merely that a port is open.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 networks:
   smoonet:
     external: true

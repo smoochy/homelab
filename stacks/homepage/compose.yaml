@@ -15,7 +15,7 @@ services:
       - /mnt/user/appdata/homepage/config:/app/config:rw # config.yml, services.yml [web:57]
     # Environment variables
     environment:
-      - DOCKER_HOST=tcp://dockerproxy:2375 # Docker integration
+      - DOCKER_HOST=tcp://dockerproxy-ro:2375 # Docker integration, read-only proxy
       - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
       - HOST_CONTAINERNAME=${SERVICE}
       - HOST_HOSTNAME=homelab-host

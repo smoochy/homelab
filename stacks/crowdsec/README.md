@@ -35,6 +35,14 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - Website: [https://github.com/shgew/cs-firewall-bouncer-docker](https://github.com/shgew/cs-firewall-bouncer-docker)
 - GitHub: [https://github.com/shgew/cs-firewall-bouncer-docker](https://github.com/shgew/cs-firewall-bouncer-docker)
 
+## State Database
+
+CrowdSec keeps its machines, alerts and decisions in a SQLite database under `appdata/crowdsec/data/crowdsec.db`, which the `crowdsec-dashboard` service mounts as well - the Metabase container reads that same file as its data source, a leftover of the removed `cscli dashboard` setup.
+
+- `USE_WAL=true` puts the database into write-ahead logging mode, so readers no longer block the writer.
+- Without it, concurrent access degrades into permanent `database is locked` errors: LAPI requests run until their retry deadline, the local machine login fails with 401, and both bouncers keep re-pulling their decision streams.
+- The setting is applied by the image entrypoint, which writes `db_config.use_wal` into the mounted `config.yaml` on start.
+
 ## Traefik Integration
 
 The Traefik remediation path is handled by the official `crowdsec-bouncer-traefik-plugin` inside the [`traefik`](../traefik/README.md) stack.

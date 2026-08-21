@@ -1,0 +1,68 @@
+services:
+  stack-health:
+    container_name: stack-health
+    build:
+      context: ./poller
+    image: stack-health:local
+    # Built locally and never published, so a registry pull must not be attempted.
+    # A source change needs `docker compose up -d --build` on the host.
+    pull_policy: build
+    restart: unless-stopped
+
+    # This stack is deliberately NOT deployed by Komodo (issue #883). It watches
+    # Komodo, and a Komodo deploy that recreates `dockerproxy` took the whole
+    # deploy path down once already (issue #967) - a watcher that dies with the
+    # thing it watches reports nothing. Unraid's Compose Manager owns it instead,
+    # from /mnt/user/appdata/_composerize/stack-health/, exactly as the `komodo`
+    # stack itself is owned. This directory stays the source of truth.
+    networks:
+      - smoonet
+
+    volumes:
+      # State file and pause marker. The Uptime Kuma appdata-backup pre-run hook
+      # drops `paused` here and the post-run hook removes it, so the backup
+      # window - during which containers are stopped on purpose - stays quiet.
+      - /mnt/user/appdata/stack-health:/state
+
+    environment:
+      - HOST_CONTAINERNAME=stack-health
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+      # Read-only Komodo API key. The poller only ever calls `POST /read`.
+      - KOMODO_ADDRESS=${KOMODO_ADDRESS}
+      - KOMODO_API_KEY=${KOMODO_API_KEY}
+      - KOMODO_API_SECRET=${KOMODO_API_SECRET}
+      # The address an alert deeplinks to, which is the one a human can open.
+      - KOMODO_HOST=${KOMODO_HOST}
+
+      - APPRISE_ENDPOINT=${APPRISE_ENDPOINT}
+      # Dead-man switch: the monitor trips when this container stops pushing.
+      - KUMA_PUSH_URL=${KUMA_PUSH_URL}
+
+      - STACK_HEALTH_INTERVAL_SECONDS=60
+      - STACK_HEALTH_FAILURES=3
+      - STACK_HEALTH_REPEAT_SECONDS=21600
+      - STACK_HEALTH_DEPLOY_GRACE_SECONDS=300
+      - STACK_HEALTH_UNDECIDABLE_TICKS=5
+      - STACK_HEALTH_STATE_FILE=/state/stack-health.json
+      - STACK_HEALTH_PAUSE_FILE=/state/paused
+      # Stacks that are expected to be down. Komodo's `_stacks` template is
+      # already excluded by its template flag and needs no entry here.
+      - STACK_HEALTH_EXCLUDE_STACKS=${STACK_HEALTH_EXCLUDE_STACKS:-}
+
+    # No healthcheck. Deliberate deviation from the repo-wide rule: this
+    # container serves nothing, so every probe available to it would be a
+    # liveness check of the shell rather than of the poll loop, and an
+    # always-green check is worse than none. Its real health signal is the
+    # Uptime Kuma push monitor above, which observes the loop from outside and
+    # trips when a round stops completing.
+
+    labels:
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/uptime-kuma.png
+
+networks:
+  smoonet:
+    external: true
+    name: smoonet

@@ -2,33 +2,14 @@ services:
   traefik:
     container_name: traefik
     image: traefik:v3.7.10@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
-    # Second pilot for the syslog log driver (#978). speedtest-tracker proved the
-    # mechanism but writes 20 KB/day, so it never touched max-buffer-size. Measured on
-    # the host, that buffer holds roughly 20k lines and then drops silently, with no
-    # error at either end. Traefik is ~90% of the fleet's log volume and the only stack
-    # that can plausibly reach it, so it burns in before the driver becomes the
-    # daemon-wide default.
-    #
-    # The tag has to use index with a quoted key: the compose project label contains
-    # dots and Go template field access cannot address it. A failing log-opt template is
-    # rejected at container create, which is exactly why this is piloted per stack.
-    #
-    # This replaces the json-file block that stood here since 386e264. That block was
-    # rotation bounding, never a deliberate opt-out, and a per-container logging block
-    # overrides the daemon default - it would have kept the one source this effort most
-    # wants in the store out of it while the rollout looked green.
-    logging:
-      driver: syslog
-      options:
-        syslog-address: "udp://127.0.0.1:1514"
-        syslog-format: rfc5424micro
-        mode: non-blocking
-        max-buffer-size: 4m
-        # Required for the tag below. .ExtraAttributes carries only the labels named
-        # here, so without this the project half of the tag renders empty and every
-        # record lands under ".traefik" instead of "traefik.traefik".
-        labels: com.docker.compose.project
-        tag: '{{ index (.ExtraAttributes nil) "com.docker.compose.project" }}.{{ .Name }}'
+    # This stack was the second pilot for the syslog log driver (#978), after
+    # speedtest-tracker. The identical configuration is now the daemon-wide default in
+    # /etc/docker/daemon.json, so the per-stack block is gone. It also retires the
+    # json-file block that stood here since 386e264: that block was rotation bounding,
+    # never a deliberate opt-out, and a per-container logging block overrides the daemon
+    # default - it would have kept this stack out of the store while the rollout looked
+    # green. Rotation now lives in daemon.json's dual-logging cache options, since
+    # DOCKER_LOG_ROTATION is off in /boot/config/docker.cfg.
     restart: unless-stopped
 
     # Network: the address is pinned because qBittorrent's WebUI trusts it as a

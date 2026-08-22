@@ -63,8 +63,9 @@ The plugin loads from disk, never from the registry. The remote path is not usab
 
 - `traefik.yml` registers `github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin` under `experimental.localPlugins`.
 - The sources live on the host under `/mnt/user/appdata/traefik/plugins-local` and are mounted read-only into the container at `/plugins-local`, which is the path Traefik resolves relative to its working directory. The mount is required, because a container-internal symlink lives in the writable layer and is lost on every recreate.
-- The `traefik` service defines the `crowdsec-bouncer` middleware via Docker labels so the LAPI key can be injected from `.env`.
-- `rules/base.yml` applies `crowdsec-bouncer@docker` only on `chain-external` and `chain-external-bypass`.
+- The `crowdsec-bouncer` middleware is defined by the `crowdsec_bouncer` config in `compose.yaml`, which compose mounts into the watched rules directory as `/etc/traefik/rules/crowdsec-bouncer.yml`. It is a config rather than a file under `rules/` because compose interpolates `${CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS}` from `.env` and the file provider would not. The LAPI key is not in that file: the `crowdsec_lapi_key` config supplies it as `/run/secrets/crowdsec-lapi-key`, which the plugin reads via `crowdsecLapiKeyFile`.
+- Docker labels were the earlier home of that definition. They made it `crowdsec-bouncer@docker`, which does not exist yet during the first configuration round, so every start logged one `middleware "crowdsec-bouncer@docker" does not exist` error per router until the docker provider caught up.
+- `rules/base.yml` applies `crowdsec-bouncer` only on `chain-external` and `chain-external-bypass`.
 - `chain-internal` and `chain-internal-bypass` intentionally stay CrowdSec-free.
 - `CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS` must stay aligned with `websecure-external.forwardedHeaders.trustedIPs`.
 

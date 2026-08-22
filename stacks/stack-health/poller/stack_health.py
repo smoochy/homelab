@@ -223,18 +223,24 @@ def notify(title, body, kind="warning"):
         log(f"apprise notify failed: {error}")
 
 
-def failure_body(stack_name, stack_id, failures):
+def failure_body(stack_name, stack_id, failures, duration=None):
     """One labelled block per failing container, after `uppollo-runner.sh`.
 
     The stack name is already the title, so a block is headed by the container.
     Single and multi-container failures take the same form on purpose: two
-    layouts for one event is what this shape exists to remove.
+    layouts for one event is what this shape exists to remove - and that
+    includes the six-hourly reminder, which used to carry a bare count. A count
+    reads as "the stack is down" over a stack whose named container is up and
+    whose rider is the one that died, so the reminder names them too and only
+    adds how long it has been going on.
     """
     # ponytail: no length bound. A Discord embed description caps at 4096 chars
     # and apprise truncates silently, which a block of ~120 chars would only
     # reach past ~30 failing containers in one stack. Bound it if a stack ever
     # gets that big.
     lines = [f"**{stack_name}** - {len(failures)} container(s) failing"]
+    if duration is not None:
+        lines.append(f"⏱️ Failing for: {human_duration(duration)}")
     for failure in failures:
         lines += [
             "",
@@ -392,9 +398,7 @@ def run_once(state):
         elif kind == "repeat":
             notify(
                 f"⚠️ stack-health: {name} is still failing",
-                f"**{name}**\n"
-                f"⏱️ Failing for: {human_duration(extra)}\n"
-                f"🧩 Containers: {len(failures)} still down",
+                failure_body(name, stack.get("id"), failures, extra),
                 "warning",
             )
         else:
@@ -516,6 +520,13 @@ def _self_check():
     assert body[4] == "📦 Image: lscr.io/q:5 sha256:0123456789ab", body
     assert body[6] == "**sonarr**" and body[8] == "📦 Image: unknown image", body
     assert len(body) == 9, body
+
+    # The reminder is the same block with one line inserted, and that line is
+    # the whole reason the reminder stopped being a bare count.
+    repeat = failure_body("qbittorrent", None, failures, 21720).split("\n")
+    assert repeat[0] == body[0], repeat[0]
+    assert repeat[1] == "⏱️ Failing for: 6h 2m", repeat[1]
+    assert repeat[2:] == body[1:], repeat
 
     print("self-check ok")
 

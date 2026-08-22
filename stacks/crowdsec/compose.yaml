@@ -66,7 +66,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
-    image: metabase/metabase:v0.63.5.2@sha256:57adae701ff3ae88a4dde14c8dc4011eb0c2120a941e5031e7d30bb027edb77c
+    image: metabase/metabase:v0.63.14.1@sha256:a56bef7d9c75ac83a393b78c1335dd1a2ad5a8425867803931da7317078afaf7
     networks:
       - smoonet
     pids_limit: 2048

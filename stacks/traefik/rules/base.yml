@@ -51,7 +51,8 @@ http:
         # stsSeconds: 63072000           # 2 years
 
     # Combining the single middlewares into a chain.
-    # crowdsec-bouncer@docker is defined by labels on the traefik service in compose.yaml and
+    # crowdsec-bouncer is a file-provider middleware like these chains, defined in the
+    # crowdsec_bouncer config in compose.yaml and mounted into this rules directory. It
     # only belongs in the external chains: internal traffic never passes CrowdSec's decisions.
     chain-internal:
       chain:
@@ -70,7 +71,7 @@ http:
       chain:
         middlewares:
           - security-headers
-          - crowdsec-bouncer@docker
+          - crowdsec-bouncer
           #- TODO: Authentik
           - gzip
 
@@ -79,7 +80,7 @@ http:
       chain:
         middlewares:
           - security-headers
-          - crowdsec-bouncer@docker
+          - crowdsec-bouncer
           - gzip
 
   routers:

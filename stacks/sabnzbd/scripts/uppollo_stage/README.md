@@ -59,10 +59,16 @@ Both values are environment variables with working defaults; SABnzbd passes its 
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `UPPOLLO_STAGING_ROOT` | `/data/usenet/staging` | Where staged entries are written. Must be on the same filesystem as the completed downloads. |
-| `UPPOLLO_STAGED_CATEGORIES` | `movies tv radarr sonarr` | Space-separated categories that are staged at all. Any other category completes untouched. A category that is not listed here is the one way this silently does nothing, so it has to match what SABnzbd actually reports, which is the category name and not the download directory. |
+| `UPPOLLO_STAGED_CATEGORIES` | `movies tv radarr sonarr` | Space-separated categories that are staged at all. Any other category completes untouched. A category that is not listed here is the one way this silently does nothing, so it has to match what SABnzbd actually reports, which is the category name and not the download directory. **`season-pack` must never be added**, see below. |
 | `UPPOLLO_VIDEO_EXTENSIONS` | `mkv mp4 avi ts m2ts` | Space-separated video extensions. Part of the allowlist, and separately the answer to whether the release still has anything worth seeding after filtering. |
 | `UPPOLLO_EXTRA_EXTENSIONS` | `srt sub idx ass ssa nfo` | Space-separated non-video extensions that may travel with the release. |
 | `APPRISE_ENDPOINT` | empty | Where the empty case is reported. Empty disables notifications; the script never fails a job over a notifier. |
+
+## The one category that must never be staged
+
+`season-pack` is the category the `season-scan` rider of the `qbittorrent` stack grabs into, and it must never appear in `UPPOLLO_STAGED_CATEGORIES` (issues #1201, #1203). Its jobs are episodes of one season that are meant to become a single season pack: the rider waits until every job of the season has completed, assembles them into one pack directory on the seed volume, and deletes the downloads afterwards. Staging them would hand each episode to `uppollo-runner` as a release of its own, so the season would be uploaded episode by episode before the pack exists - and the pack would then be a duplicate of uploads the tracker already holds.
+
+The default leaves it out, but only by omission. It is written down here because the failure is silent in both directions: nothing errors, the episodes simply go up one at a time.
 
 ## The allowlist
 

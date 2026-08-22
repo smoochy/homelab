@@ -41,6 +41,13 @@ services:
     # log driver becomes syslog, that would be a bootstrap loop.
     logging:
       driver: json-file
+      # Explicit, because the rotation bound these three inherited came from Unraid's
+      # `--log-opt max-size/--log-opt max-file` dockerd flags, and those have to go
+      # before a global `log-opts` in daemon.json is accepted at all (see #978).
+      # Without this they would grow unbounded on the 50 G Docker loop image.
+      options:
+        max-size: "20m"
+        max-file: "3"
 
     # No healthcheck, deliberately. The image is distroless from v1.52.0 on: it carries
     # no shell, no wget and no curl, so neither sanctioned probe can run inside it, and
@@ -109,6 +116,13 @@ services:
     # output into the store it queries, loudest exactly during a crash loop.
     logging:
       driver: json-file
+      # Explicit, because the rotation bound these three inherited came from Unraid's
+      # `--log-opt max-size/--log-opt max-file` dockerd flags, and those have to go
+      # before a global `log-opts` in daemon.json is accepted at all (see #978).
+      # Without this they would grow unbounded on the 50 G Docker loop image.
+      options:
+        max-size: "20m"
+        max-file: "3"
 
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8880/health"]
@@ -160,6 +174,13 @@ services:
 
     logging:
       driver: json-file
+      # Explicit, because the rotation bound these three inherited came from Unraid's
+      # `--log-opt max-size/--log-opt max-file` dockerd flags, and those have to go
+      # before a global `log-opts` in daemon.json is accepted at all (see #978).
+      # Without this they would grow unbounded on the 50 G Docker loop image.
+      options:
+        max-size: "20m"
+        max-file: "3"
 
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"]

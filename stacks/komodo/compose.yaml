@@ -268,5 +268,18 @@ volumes:
 
 
 networks:
+  # Declared external deliberately, although this stack is the one that created
+  # smoonet originally. The network carries an --ip-range of 172.18.128.0/17,
+  # set by hand, which keeps Docker's dynamic allocator away from the seven
+  # addresses pinned below .128.0 - see "The bridge network smoonet" in
+  # docs/superpowers/runbooks/stack-recovery.md for the create command and the
+  # reasoning. An ip-range cannot be expressed here without Compose taking
+  # ownership of the network again, and a Compose-managed network whose labels
+  # no longer match this file aborts the deploy outright. That deploy only ever
+  # runs while the control plane is already broken, so the failure would land at
+  # the worst possible moment. External means Compose attaches and nothing else:
+  # it never validates the labels and can never recreate the network without the
+  # range.
   smoonet:
+    external: true
     name: smoonet

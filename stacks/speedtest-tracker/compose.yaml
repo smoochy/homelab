@@ -1,7 +1,7 @@
 services:
   speedtest-tracker:
     container_name: speedtest-tracker
-    image: ghcr.io/linuxserver/speedtest-tracker:v1.14.8-ls168@sha256:4829a2ea61edd50370adc58050e6fbb93c96ed0c5d0215673b41df8347c9b2a2
+    image: ghcr.io/linuxserver/speedtest-tracker:v1.15.0-ls169@sha256:59518a6f2b49254b310cc2e543320dd3fbaa80381b588cd1f2bf116073698c27
     restart: unless-stopped
 
     # No `logging:` block. This stack was the pilot for the fleetwide log-driver switch

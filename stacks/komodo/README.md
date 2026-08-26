@@ -4,7 +4,7 @@
 
 ## Stack Role
 
-This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `komodo`. For the encrypted deployment workflow with SOPS, age, File Watcher, and Komodo, see [`docs/sops-age-komodo.md`](../../docs/sops-age-komodo.md).
+This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `komodo`.
 
 ## Services
 
@@ -51,4 +51,3 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 - `compose.yaml` intentionally manages the first creation of the shared `smoonet` bridge network so a fresh host can deploy Komodo without a manual `docker network create smoonet` step. Later redeploys reuse the same named network.
 - The deployed Periphery image is based on `ghcr.io/smoochy/komodo-periphery-sops-age` so SOPS and age are available inside the Komodo host workflow.
 - If you are migrating an existing Komodo v1 deployment to v2, follow the official upgrade guide: <https://komo.do/docs/releases/v2.0.0#upgrading-to-komodo-v2>.
-- The encryption and decrypt flow is documented in [`docs/sops-age-komodo.md`](../../docs/sops-age-komodo.md).

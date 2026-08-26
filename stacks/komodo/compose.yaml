@@ -256,6 +256,13 @@ services:
       - /mnt/user/appdata/komodo/stacks:/etc/komodo/stacks
       - /mnt/user/appdata/komodo/builds:/etc/komodo/builds
       - /mnt/user/appdata/komodo/root:/root
+      ## The shared script tree the qbittorrent and sabnzbd stacks run from
+      ## (issue #343). The repository resource that mirrors it runs its
+      ## `on_pull` inside this container, so the destination has to be the same
+      ## path here as on the host - without this the mirror writes into the
+      ## container's own filesystem, reports success, and nothing reaches the
+      ## array.
+      - /mnt/user/appdata/qbittorrent/scripts:/mnt/user/appdata/qbittorrent/scripts
     networks:
       - smoonet
 

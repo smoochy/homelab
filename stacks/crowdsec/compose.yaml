@@ -42,9 +42,15 @@ services:
     volumes:
       - /mnt/user/appdata/crowdsec/:/etc/crowdsec:rw
       - /mnt/user/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
-      - /mnt/user/appdata/crowdsec:/var/log/crowdsec:rw
       - /mnt/user/appdata/traefik/logs/:/var/log/traefik:rw
-      - /var/log/syslog:/syslog:ro
+      # The host log directory, not the syslog file alone. Unraid rotates
+      # /var/log/syslog by rename at 1 MB with no copytruncate, and a single-file
+      # bind mount pins the container to the inode it was started with - after the
+      # first rotation it would keep tailing an unlinked file and read nothing
+      # more, without any error. Mounting the directory lets the file datasource
+      # see the replacement appear and re-open it. Read-only: CrowdSec only ever
+      # consumes this.
+      - /var/log:/host-var-log:ro
   crowdsec-dashboard:
     container_name: crowdsec-dashboard
     depends_on:
@@ -66,7 +72,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
-    image: metabase/metabase:v0.63.14.1@sha256:a56bef7d9c75ac83a393b78c1335dd1a2ad5a8425867803931da7317078afaf7
+    image: metabase/metabase:v0.63.14.3@sha256:752e237b3ed62cc4cd01ff08d2bcdd9507e5f4b6ee9abb1b9e3a7489dd4b8e6c
     networks:
       - smoonet
     pids_limit: 2048
@@ -196,7 +202,7 @@ services:
     # HTTP or local socket of its own, so every probe available here would answer for
     # something other than the bouncer - an always-green check is worse than none.
     # Its liveness is covered by the stack-health poller instead.
-    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.34-patch1@sha256:c33bae81fdade1e1c243946bedfcdb5b22a25c4fbd1ef166ce32935334d7575c
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.36@sha256:4a7bd2e3eda81f9382f6e8571cebff7192e9b300e99d1cd5993b3b03580a0cb8
     labels:
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png

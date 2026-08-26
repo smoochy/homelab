@@ -64,45 +64,29 @@ Open `delete_item.sh` and adjust these values:
 
 ### 1. Map the script directory
 
-- Host path: `/mnt/user/appdata/{sabnzbd}/scripts`
+- Host path: `/mnt/user/appdata/qbittorrent/scripts`
 - Container path: `/scripts`
-- Access: Read/Only or Read/Write
+- Access: Read/Only
 
-Restart the container afterwards.
+Restart the container afterwards. The mount is the root of the mirrored tree rather than the revision itself, so the `current` symlink inside it is resolved per job and a mirrored change does not need a recreate.
 
-### 2. Copy the scripts
+### 2. Place the scripts
 
-Place both scripts in the mapped scripts directory:
+The two halves no longer live side by side, because only one of them runs inside the container.
 
-- `/mnt/user/appdata/{sabnzbd}/scripts/delete_item.sh`
-- `/mnt/user/appdata/{sabnzbd}/scripts/delete_items_worker.sh`
+- `delete_item.sh` lives at `stacks/qbittorrent/scripts/sabnzbd/delete_item.sh` in this repository, in the shared script tree both stacks mount (#343). A Komodo Repo resource mirrors it onto `/mnt/user/appdata/qbittorrent/scripts` on every push, with the executable bit and LF line endings already set, so there is nothing to copy, convert or `chmod` by hand.
+- `delete_items_worker.sh` runs on the host under Unraid's user scripts and stays at `/mnt/user/appdata/sabnzbd/scripts/delete_items_worker.sh`, beside the queue file it drains. It reads two settings out of its producer half and finds it through `DELETE_ITEM_SCRIPT`, which defaults to the mirrored path above.
 
-### 3. Convert to LF line endings
-
-If the files were created or edited on Windows, convert them to LF:
-
-```sh
-sed -i 's/\r$//' /mnt/user/appdata/{sabnzbd}/scripts/delete_item.sh
-sed -i 's/\r$//' /mnt/user/appdata/{sabnzbd}/scripts/delete_items_worker.sh
-```
-
-### 4. Make both scripts executable
-
-```sh
-chmod +x /mnt/user/appdata/{sabnzbd}/scripts/delete_item.sh
-chmod +x /mnt/user/appdata/{sabnzbd}/scripts/delete_items_worker.sh
-```
-
-### 5. Configure SABnzbd
+### 3. Configure SABnzbd
 
 1. Go to `Config` -> `Folders`.
-2. Set `User Script Folder` to `/scripts`.
+2. Set `User Script Folder` to `/scripts/current/sabnzbd`.
 3. Go to `Config` -> `Categories`.
 4. Assign `delete_item.sh` to the category or categories you want to handle.
 
 Only successful jobs in the configured categories are queued.
 
-### 6. Schedule the worker on the host
+### 4. Schedule the worker on the host
 
 Run `delete_items_worker.sh` regularly on the Docker host, for example with
 cron or the Unraid User Scripts plugin.

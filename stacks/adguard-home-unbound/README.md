@@ -4,7 +4,7 @@
 
 ## Stack Role
 
-This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `adguard-home-unbound`. For the encrypted deployment workflow with SOPS, age, File Watcher, and Komodo, see [`docs/sops-age-komodo.md`](../../docs/sops-age-komodo.md).
+This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `adguard-home-unbound`.
 
 In this setup, `adguard-home-sync` is used because a second redundant AdGuard instance runs on another device, such as a Raspberry Pi, so the local network can use two DNS servers for failover.
 

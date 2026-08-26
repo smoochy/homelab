@@ -1,0 +1,128 @@
+services:
+  whatpulse:
+    container_name: whatpulse
+    hostname: homelab-host
+    build:
+      context: ./whatpulse
+      args:
+        # Bump with scripts/src-rev.sh - see issue #935.
+        SRC_REV: 6227f6085946
+    image: whatpulse:local
+    # Built locally and never published, so a registry pull must not be attempted.
+    pull_policy: build
+    restart: unless-stopped
+
+    # The host's own network namespace, which is the whole point of the stack:
+    # the capture has to see the frames that cross br0, and a bridged container
+    # sees only its own veth. It also puts the capture service and the client on
+    # the same loopback, which is the only place the unauthenticated forwarding
+    # socket may ever listen (issue #1579). Same shape as cloudflared and
+    # crowdsec, the two other host-namespace members of this fleet.
+    #
+    # No `networks:` block: a host-namespace container has no address on smoonet
+    # for Traefik to discover. The Traefik labels below still work, because every
+    # stack in this fleet names its upstream explicitly through
+    # `loadbalancer.server.url` rather than letting the Docker provider detect a
+    # container port; here that URL is the host IP instead of a service name, and
+    # the `traefik.docker.network` hint the bridged stacks carry is left out.
+    network_mode: host
+
+    # The capture needs both: NET_RAW for the packet socket, NET_ADMIN to put the
+    # interface into promiscuous mode. The container still runs as root, because
+    # the capture service tests for uid 0 itself and refuses otherwise, so a file
+    # capability cannot replace either of these (issue #1582).
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+    # The interface pin, and the reason this stack ships a seccomp profile at all
+    # (issue #1612). The capture service prefers a global AF_PACKET ring bound to
+    # every interface and honours `-i` only on its libpcap fallback, so on this
+    # host it would count br0, eth0 - which carry the same frames - and forty-odd
+    # veth pairs, several times over per byte. The profile fails exactly one
+    # syscall, `setsockopt(SOL_PACKET, PACKET_RX_RING)`, which sends the service
+    # down the per-interface path and leaves everything else allowed.
+    #
+    # The path is relative to this compose file, which Compose resolves against
+    # the file's own directory. Should Komodo or the Unraid compose manager not
+    # resolve it that way - visible as an empty SecurityOpt on the running
+    # container - the fallback is the LD_PRELOAD shim described on issue #1612.
+    security_opt:
+      - seccomp=./seccomp-no-packet-ring.json
+
+    volumes:
+      # The client's settings, its statistics database and its logs live in two
+      # directories under this parent that differ only in case, so the parent is
+      # what has to persist. Without it the linked computer is lost on every
+      # recreate and has to be logged in and linked again by hand (issue #1595).
+      - /mnt/user/appdata/whatpulse:/home/whatpulse/.local/share
+
+    environment:
+      - HOST_CONTAINERNAME=whatpulse
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+      # The interface the capture is pinned to. br0 carries the host IP and sees
+      # every frame eth0 sees, so it is the one interface that counts the traffic
+      # once (issue #1581).
+      - WP_INTERFACE=br0
+      # The web VNC front end, which is how the one-time login and any later look
+      # at the client happen on a server with no desktop. In the host namespace
+      # these are host ports, so they are chosen to be free rather than mapped.
+      - WP_WEB_PORT=6799
+      - WP_VNC_PORT=5999
+      - WP_VNC_PASSWORD=${WP_VNC_PASSWORD}
+
+    # Two halves, both of which have to be up for a single byte to be counted.
+    # The listener on 127.0.0.1:3499 is the client's, and a successful connect
+    # proves the client is up and that the socket the capture depends on exists.
+    # The running capture process is the second half: when the capture cannot
+    # start, the entrypoint retries it every 15 seconds, so the client's listener
+    # stays up and the port probe alone reports a healthy container that counts
+    # nothing. The web front end is deliberately not probed at all - it stays up
+    # while the client behind it is gone. bash's own /dev/tcp rather than
+    # `nc -z`, per the fleet rule; there is no HTTP endpoint on this port. The
+    # process half reads /proc directly rather than calling pgrep, which would
+    # mean pulling procps into the image for one probe. The name is matched as a
+    # prefix because the kernel truncates `comm` to fifteen characters, so the
+    # capture service appears there as `whatpulse-pcap-`; the client itself is
+    # plain `whatpulse` and does not match.
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q '^whatpulse-pcap' /proc/*/comm && timeout 3 bash -c '</dev/tcp/127.0.0.1/3499' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # The Qt client unpacks, starts an X server, a window manager and a tray
+      # before it listens, so it is slower to become healthy than a service image.
+      start_period: 180s
+
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal only, and that is the whole exposure decision (issue #1626).
+      # The web front end is remote control of a logged-in desktop guarded by
+      # `WP_VNC_PASSWORD` alone, and neither internal chain carries
+      # authentication, so there is no external router and no header bypass
+      # beside it - only the `websecure-internal` entrypoint, which is not the
+      # one the internet reaches.
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=${SERVICE}-vnc,chain-internal@file
+      # The bare host lands on the noVNC client rather than on the directory
+      # index the front end serves at the root. Only the root is redirected, so
+      # every asset `vnc.html` pulls afterwards still resolves. The doubled `$`
+      # are Compose escapes: Traefik sees `$` and `${1}`.
+      - traefik.http.middlewares.${SERVICE}-vnc.redirectregex.regex=^https?://([^/]+)/?$$
+      - traefik.http.middlewares.${SERVICE}-vnc.redirectregex.replacement=https://$${1}/vnc.html
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_INTERNAL_HOST}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # The host IP rather than a service name, because there is no service name
+      # to resolve for a container that shares the host's namespace.
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # No icon label here: the image carries `net.unraid.docker.icon` itself
+      # (pull request #1622), because Unraid reads it off the running container
+      # either way and one place to bump beats two that drift.
+      - com.smoochy.komodo.restore_stack=whatpulse
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}

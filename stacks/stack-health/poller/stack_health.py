@@ -136,12 +136,23 @@ def classify(state):
     return None
 
 
-def short_digest(image):
-    """`repo:tag@sha256:0123...` -> `repo:tag sha256:0123456789ab`."""
-    if not image:
-        return "unknown image"
-    repo, _, digest = image.partition("@")
-    return f"{repo} {digest[:19]}" if digest else repo
+def short_digest(image, digest=None):
+    """`repo:tag` plus `sha256:0123...` -> `repo:tag@01234567`.
+
+    The digest may travel inside the reference or beside it: Komodo's cached
+    container view carries whichever of the two the daemon happened to record,
+    and for a locally built image that is a bare image id with no repository or
+    tag at all. Both halves are optional, so whatever is known is printed and a
+    missing half is simply left out.
+    """
+    reference = image or ""
+    if reference.startswith("sha256:"):
+        digest, reference = digest or reference, ""
+    repo, _, embedded = reference.partition("@")
+    digest = (digest or embedded or "").removeprefix("sha256:")[:8]
+    if not repo:
+        return digest or "unknown image"
+    return f"{repo}@{digest}" if digest else repo
 
 
 def inspect_failures(stack_name, services):
@@ -170,8 +181,17 @@ def inspect_failures(stack_name, services):
             return None
         reason = classify(inspected.get("State") or {})
         if reason:
+            # The reference as written in the compose file, from the inspect
+            # rather than from the cached view: the cached view can hold a bare
+            # image id, which names nothing a human can read.
+            reference = (inspected.get("Config") or {}).get("Image") or container.get("image")
             failures.append(
-                {"name": name, "reason": reason, "image": container.get("image")}
+                {
+                    "name": name,
+                    "reason": reason,
+                    "image": reference,
+                    "digest": inspected.get("Image"),
+                }
             )
     return failures
 
@@ -246,7 +266,7 @@ def failure_body(stack_name, stack_id, failures, duration=None):
             "",
             f"**{failure['name']}**",
             f"📝 Reason: {failure['reason']}",
-            f"📦 Image: {short_digest(failure.get('image'))}",
+            f"📦 Image: {short_digest(failure.get('image'), failure.get('digest'))}",
         ]
     if stack_id and KOMODO_HOST:
         lines += ["", f"[Open in Komodo]({KOMODO_HOST}/stacks/{stack_id})"]
@@ -501,8 +521,13 @@ def _self_check():
     assert step(entry, True, now) is None
     assert step(entry, False, now + 60) is None
 
-    assert short_digest("ghcr.io/x/y:v1@sha256:0123456789abcdef") == "ghcr.io/x/y:v1 sha256:0123456789ab"
+    assert short_digest("ghcr.io/x/y:v1@sha256:0123456789abcdef") == "ghcr.io/x/y:v1@01234567"
     assert short_digest("ghcr.io/x/y:v1") == "ghcr.io/x/y:v1"
+    assert short_digest("ghcr.io/x/y:v1", "sha256:0123456789abcdef") == "ghcr.io/x/y:v1@01234567"
+    # A bare image id names no repository, and half a line beats none.
+    assert short_digest("sha256:0123456789abcdef") == "01234567"
+    assert short_digest(None, "sha256:0123456789abcdef") == "01234567"
+    assert short_digest(None) == "unknown image"
     assert human_duration(45) == "45s" and human_duration(600) == "10m"
     assert human_duration(7800) == "2h 10m"
 
@@ -517,7 +542,7 @@ def _self_check():
     assert body[1] == "" and body[5] == "", body
     assert body[2] == "**qbittorrent**", body
     assert body[3] == "📝 Reason: unhealthy", body
-    assert body[4] == "📦 Image: lscr.io/q:5 sha256:0123456789ab", body
+    assert body[4] == "📦 Image: lscr.io/q:5@01234567", body
     assert body[6] == "**sonarr**" and body[8] == "📦 Image: unknown image", body
     assert len(body) == 9, body
 

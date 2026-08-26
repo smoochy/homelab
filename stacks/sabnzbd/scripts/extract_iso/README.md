@@ -52,6 +52,8 @@ container includes `7z`.
 
 ## Install
 
+On this host none of the steps below are carried out by hand: the script lives at `stacks/qbittorrent/scripts/sabnzbd/extract_iso.sh` in this repository, in the shared script tree both stacks mount (#343), and a Komodo Repo resource mirrors it onto `/mnt/user/appdata/qbittorrent/scripts` on every push with the executable bit and LF line endings already set. The steps are kept for anyone installing the script outside that setup.
+
 ### 1. Map the script directory
 
 - Host path: `/mnt/user/appdata/{Name of Container}/scripts`

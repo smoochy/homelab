@@ -1,13 +1,12 @@
 services:
   traefik:
     container_name: traefik
-    image: traefik:v3.7.10@sha256:9c3b91d5fb7770853ca5c1124a23c34bf2d9b47ffaebeab2614cbaf410dcb2ac
-    # No `logging:` block, and deliberately not the json-file one that stood here until
-    # #1105 either. This stack was the second pilot for the syslog log driver (#978);
-    # that configuration is now the daemon default in /etc/docker/daemon.json, so a copy
-    # here would only be a second place to drift. A per-container block overrides the
-    # daemon default, which is how the old json-file block would have kept this source
-    # out of the store while the rollout looked green.
+    image: traefik:v3.7.11@sha256:5203c3f39ca70de6790d964624e042463ffbd57715bc82be155cf224c0dd5144
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "100m"
     restart: unless-stopped
 
     # Network: the address is pinned because qBittorrent's WebUI trusts it as a
@@ -62,7 +61,11 @@ services:
     # 127.0.0.1 is used per the house rule after batch 1. The probe answers as soon as
     # the process listens, so it reports liveness and not router convergence.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ping || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ping || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -161,7 +164,7 @@ services:
     container_name: traefik-manager
     depends_on:
       - traefik
-    image: ghcr.io/chr0nzz/traefik-manager:1.10.3@sha256:f7d2206d9ab409cde59caed53c147e384c07a2a17695a7cfdc77a7d3121a3eb5
+    image: ghcr.io/chr0nzz/traefik-manager:1.11.0@sha256:8be4aec824ccf1bc39157257794453857fca18f5d54c4c15d11ff391aacf56dc
     restart: unless-stopped
 
     # Network
@@ -205,7 +208,11 @@ services:
     # health endpoint. localhost resolves to ::1 here, where it does not listen, so
     # the probe uses the literal 127.0.0.1.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -287,7 +294,11 @@ services:
     # localhost resolves to ::1, where the dashboard does not listen, so the probe
     # uses the literal 127.0.0.1. The UI root is the only surface it exposes.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -361,7 +372,11 @@ services:
     # Health probe against the agent API the dashboard reads from. The agent exposes
     # no dedicated health path, so the API root stands in for one.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/ || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:5000/ || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3

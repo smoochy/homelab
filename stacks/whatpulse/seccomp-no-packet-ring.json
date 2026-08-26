@@ -1,0 +1,35 @@
+{
+  "_comment": "Fails exactly one syscall so the WhatPulse capture service takes its per-interface libpcap path instead of a ring bound to every interface (issue #1612). setsockopt(level=SOL_PACKET=263, optname=PACKET_RX_RING=5) returns EPERM, but only when optlen is 16. libpcap creates its own ring through the same syscall, so an unconditional rule kills the fallback too and nothing is captured at all. The two callers are told apart by the request struct they pass: the service's global ring passes a 16-byte struct tpacket_req, libpcap 1.10 passes a 28-byte struct tpacket_req3 for TPACKET_V3. Everything else is allowed, including the rest of setsockopt. Deliberately laxer than Docker's default profile, in a container that already runs as root with CAP_NET_RAW in the host network namespace.",
+  "defaultAction": "SCMP_ACT_ALLOW",
+  "architectures": [
+    "SCMP_ARCH_X86_64",
+    "SCMP_ARCH_X86",
+    "SCMP_ARCH_X32"
+  ],
+  "syscalls": [
+    {
+      "names": [
+        "setsockopt"
+      ],
+      "action": "SCMP_ACT_ERRNO",
+      "errnoRet": 1,
+      "args": [
+        {
+          "index": 1,
+          "value": 263,
+          "op": "SCMP_CMP_EQ"
+        },
+        {
+          "index": 2,
+          "value": 5,
+          "op": "SCMP_CMP_EQ"
+        },
+        {
+          "index": 4,
+          "value": 16,
+          "op": "SCMP_CMP_EQ"
+        }
+      ]
+    }
+  ]
+}

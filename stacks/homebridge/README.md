@@ -4,7 +4,7 @@
 
 ## Stack Role
 
-This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `homebridge`. For the encrypted deployment workflow with SOPS, age, File Watcher, and Komodo, see [`docs/sops-age-komodo.md`](../../docs/sops-age-komodo.md).
+This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `homebridge`.
 
 `homebridge` uses both `br0` and `smoonet`: HomeKit discovery stays on the LAN-facing `br0` address, while Docker-internal services such as `mosquitto` should be reached by hostname on `smoonet`.
 

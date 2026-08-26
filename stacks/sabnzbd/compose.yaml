@@ -147,7 +147,16 @@ services:
     network_mode: "container:gluetun" # Uses gluetun's network namespace [web:38][web:54]
     # Volumes
     volumes:
-      - /mnt/user/appdata/sabnzbd/scripts:/scripts # Custom scripts [web:53]
+      # The shared script tree, mirrored onto appdata from this repo by a
+      # Komodo Repo resource (#343). The mount is the stable root, and
+      # `script_dir` in sabnzbd.ini points at /scripts/current/sabnzbd inside
+      # it, so the mirror's symlink swap is resolved per job: a script change
+      # reaches the next job without restarting SABnzbd mid-download. The
+      # category entries stay as they are, being filenames under script_dir.
+      # Only the scripts SABnzbd itself runs live in that subtree; the
+      # host-cron ones stay in /mnt/user/appdata/sabnzbd/scripts with their own
+      # state beside them.
+      - /mnt/user/appdata/qbittorrent/scripts:/scripts:ro
       - /mnt/user/appdata/sabnzbd:/config # App config [web:53]
       - /mnt/user/data/:/data/ # Downloads/incomplete
     # Environment variables

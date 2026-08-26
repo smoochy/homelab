@@ -11,7 +11,7 @@ services:
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
-    image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.1@sha256:7acd0b8b6519f1cfa0ebf260ceefe0c7867cdd959e505df0fe8d882b03a18d1b
+    image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.4@sha256:7937ad48e260fea5d47fe8150a8cbd9f9e6b67855dbc1810bf7adf3911636495
     restart: unless-stopped
     # Caddy Status-Seite unter caddy.example.com
     labels:

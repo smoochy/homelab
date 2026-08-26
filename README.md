@@ -55,7 +55,6 @@ At the root level, this repository gives you:
 - a `compose.yaml` per stack
 - a tracked `.env.example` per stack as the configuration starting point
 - stack-specific `README.md` files with upstream links and context
-- deployment guides under [`docs`](./docs/README.md)
 
 The goal is not to be a generic Docker examples collection. The repository is
 designed as a coherent homelab layout where networking, access management,
@@ -106,14 +105,8 @@ assets or example files next to the implementation.
 The layout is built to be easy to navigate:
 
 - [`stacks`](./stacks) contains the deployment files and local stack READMEs
-- [`docs`](./docs/README.md) contains cross-stack deployment guidance
 - stack READMEs explain what each service is for, what images are used, and
   where the upstream project lives
-
-For the deployment workflow itself, the most important docs are:
-
-- [SOPS, age, File Watcher, Komodo, and Unraid](./docs/sops-age-komodo.md)
-- [GitHub workflow docs](./docs/github-workflows/README.md)
 
 ## Using This Repository as a Base
 
@@ -123,9 +116,7 @@ One way to work from this repository is:
    These now live under [`stacks`](./stacks).
 2. Start from each stack's `.env.example` and fill in the local values.
 3. Adjust host paths, domains, and networking for the deployment environment.
-4. Follow the documentation in [`docs`](./docs/README.md) for encrypted env
-   handling and deployment behavior.
-5. Deploy the selected stacks with Komodo or plain Docker Compose, depending on
+4. Deploy the selected stacks with Komodo or plain Docker Compose, depending on
    the operating model.
 
 This structure is useful when the deployment needs:

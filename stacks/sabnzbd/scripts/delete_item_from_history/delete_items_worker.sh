@@ -2,7 +2,15 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-DELETE_SCRIPT="${SCRIPT_DIR}/delete_item.sh"
+# The producer half runs inside SABnzbd and moved into the shared script tree
+# with #343, so it is no longer a sibling of this worker. Only two settings are
+# read out of it, so the path is a variable rather than a copy of the values:
+# a change to DELETE_CATEGORIES still has one home.
+DELETE_SCRIPT="${DELETE_ITEM_SCRIPT:-/mnt/user/appdata/qbittorrent/scripts/current/sabnzbd/delete_item.sh}"
+[[ -r "$DELETE_SCRIPT" ]] || {
+  echo "[ERROR] delete_items_worker: delete_item.sh not readable at '$DELETE_SCRIPT'" >&2
+  exit 1
+}
 
 read_delete_script_value() {
   local key="$1"

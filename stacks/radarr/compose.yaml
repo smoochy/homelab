@@ -13,6 +13,16 @@ services:
       - PUID=99
       - TZ=Europe/Berlin
       - UMASK=022
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:7878/ping || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/linuxserver/radarr:6.3.0.10514-ls314@sha256:119aaa4a4f7349bcd2a136c5373a0d7925b5479915c7dfe0c0ad352db2a6d438
     # Network configuration. The address is pinned because upPollo runs inside the
     # qBittorrent stack's VPN namespace, whose resolver is the tunnel's, so Docker DNS

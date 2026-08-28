@@ -1,8 +1,16 @@
 services:
   plex:
     container_name: plex
+    # /identity is the only Plex route that answers without a token, so it is the
+    # readiness signal here. curl rather than wget because this image ships no wget.
+    # This replaces the inherited `disable: true`, which only mirrored the old
+    # `--no-healthcheck` run flag and left the container with no signal at all.
     healthcheck:
-      disable: true # Matches --no-healthcheck
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:32400/identity || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/linuxserver/plex:1.43.3.10896-cb3ebc72d-ls321@sha256:f6c58cb2f5e41cd1397bf2ed4e61ef63bd86e0736841b3ef426fabfe04606293
     restart: unless-stopped
     # Network (macvlan/br0 with static IP + smoonet for internal service reachability)
@@ -62,6 +70,17 @@ services:
       - traefik.docker.network=smoonet
       - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
       ## End Traefik Config
+      # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+      # stacks/autokuma/README.md for why docker_host and notification_id_list carry
+      # Kuma's numeric ids and why every field is written out.
+      - kuma.plex.docker.name=plex - plex
+      - kuma.plex.docker.docker_container=plex
+      - kuma.plex.docker.docker_host=1
+      - kuma.plex.docker.interval=300
+      - kuma.plex.docker.max_retries=1
+      - kuma.plex.docker.retry_interval=300
+      - kuma.plex.docker.resend_interval=0
+      - 'kuma.plex.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=plex
       - net.unraid.docker.icon=https://raw.githubusercontent.com/plexinc/pms-docker/master/img/plex-server.png
       - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}

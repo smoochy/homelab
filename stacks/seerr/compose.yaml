@@ -43,11 +43,15 @@ services:
       - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
     # Network config
     healthcheck:
-      interval: 15s
+      interval: 30s
       retries: 3
-      start_period: 20s
-      test: wget --no-verbose --tries=1 --spider http://localhost:5055/api/v1/status || exit 1
-      timeout: 3s
+      start_period: 60s
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5055/api/v1/status || exit 1",
+        ]
+      timeout: 10s
     networks:
       - smoonet
     ports:

@@ -1,0 +1,51 @@
+services:
+  autokuma:
+    container_name: autokuma
+    # healthcheck: none. AutoKuma 2.0.0 exposes no HTTP endpoint at all; /health and
+    # /metrics on port 8090 arrive with 2.1.0. A process-existence probe would pass the
+    # form and say nothing about the only failure that matters here, the Socket.IO
+    # connection to Uptime Kuma. Replaced by the standard wget probe against
+    # http://127.0.0.1:8090/health when the version pin moves.
+    image: ghcr.io/bigboot/autokuma:2.0.0@sha256:8acbd3ad3ec8cb6c066aa0ee541154921283ec78159015937128541921c47974
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+
+    # Volumes
+    # /data holds the label-id to monitor-id mapping AutoKuma needs to recognise its own
+    # monitors after a recreate. It is not a cache; losing it loses that mapping.
+    volumes:
+      - /mnt/user/appdata/autokuma:/data
+
+    # Environment variables
+    environment:
+      - AUTOKUMA__DOCKER__HOSTS=tcp://dockerproxy-ro:2375
+      - AUTOKUMA__DOCKER__LABEL_PREFIX=kuma
+      - AUTOKUMA__DOCKER__SOURCE=Containers
+      - AUTOKUMA__KUMA__PASSWORD=${KUMA_PASSWORD}
+      - AUTOKUMA__KUMA__URL=http://uptime-kuma:3001
+      - AUTOKUMA__KUMA__USERNAME=${KUMA_USERNAME}
+      # keep until AutoKuma 2.1.0 is stable: the "entity reappeared" guard that makes a
+      # redeploy inside the delete grace period safe is fixed in 2.1.0-rc.1 only, and a
+      # Kuma-side delete takes the heartbeat history with it via CASCADE.
+      - AUTOKUMA__ON_DELETE=keep
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+
+    labels:
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # no net.unraid.docker.webui: AutoKuma 2.0.0 has no web UI, and upstream ships its
+      # logo as SVG only, which the Unraid docker tab does not render.
+networks:
+  smoonet:
+    external: true

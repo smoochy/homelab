@@ -1,10 +1,44 @@
 services:
+  # Fills the probe-bin volume with a static busybox and exits. The cloudflared image is
+  # distroless and ships no HTTP client, so its probe runs that binary out of the
+  # read-only mount.
+  probe-busybox:
+    container_name: cloudflared-probe-busybox
+    # healthcheck: none, one-shot init container. It copies the binary and exits 0, so
+    # there is nothing left running to probe.
+    image: busybox:1.37.0-musl@sha256:fc6dddc4c44b1bfe37f41cae8e67d1693828e8f42a91862816d7953e2c9d3f23
+    command: ["cp", "/bin/busybox", "/probe/busybox"]
+    restart: "no"
+    volumes:
+      - probe-bin:/probe:rw
+
   cloudflared:
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN}
+    # --metrics pins the metrics listener, which otherwise binds a port that changes on
+    # every restart, so /ready has a stable address for the healthcheck. Loopback only:
+    # under network_mode host this listener is on the host's own stack.
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:2000 run --token ${CLOUDFLARED_TOKEN}
     container_name: cloudflared
+    depends_on:
+      probe-busybox:
+        condition: service_completed_successfully
+    volumes:
+      - probe-bin:/probe:ro # static busybox for the healthcheck, filled by probe-busybox
+    # The tunnel serves /ready on its metrics listener but ships neither an HTTP client
+    # nor a shell, so the default `wget --spider` form runs from the static busybox
+    # mounted at /probe. `127.0.0.1` rather than `localhost`: BusyBox wget prefers ::1,
+    # which fails against an IPv4-only listener.
+    healthcheck:
+      test: ["CMD", "/probe/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:2000/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: cloudflare/cloudflared:2026.8.2@sha256:0aa26e284f05e6c77ae375b8c9c11d9eb6a448fb7bcd8d40f31cb6176189eb38
     labels:
       - com.smoochy.komodo.restore_stack=cloudflared
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png
     network_mode: host  # Wichtig: Damit Tunnel lokale Services erreicht
     restart: unless-stopped
+
+volumes:
+  probe-bin:

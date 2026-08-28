@@ -17,6 +17,12 @@ What it watches, per round:
   alert is ever raised on the list alone, and no classification is made by
   string-matching the human-readable `status` line.
 
+- `ListRepos` is the second sweep, added for #1792. A Komodo Repo resource runs
+  an `on_pull` hook, and a hook that exits non-zero fails the pull - which
+  Komodo renders red and cannot alert on, because no `AlertData` variant covers
+  it. Its `state` field is the whole signal, so it is polled rather than
+  subscribed to.
+
 Failing means unhealthy, missing, exited, or restart-looping - #967 had no
 health status to be unhealthy, so "unhealthy" alone would have stayed silent.
 
@@ -38,7 +44,9 @@ process stops, and a Komodo that stays unreachable raises its own alert.
 
 import json
 import os
+import pathlib
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 
@@ -60,6 +68,10 @@ DEPLOY_GRACE_SECONDS = int(os.environ.get("STACK_HEALTH_DEPLOY_GRACE_SECONDS", "
 UNDECIDABLE_BEFORE_ALERT = int(os.environ.get("STACK_HEALTH_UNDECIDABLE_TICKS", "5"))
 STATE_FILE = os.environ.get("STACK_HEALTH_STATE_FILE", "/state/stack-health.json")
 PAUSE_FILE = os.environ.get("STACK_HEALTH_PAUSE_FILE", "/state/paused")
+# The marker this container's own healthcheck reads. It lives in /run, in the
+# writable layer, rather than beside the state file on the host bind: host state
+# would survive a restart and report a dead poller as healthy.
+HEARTBEAT_FILE = os.environ.get("STACK_HEALTH_HEARTBEAT_FILE", "/run/stack-health.heartbeat")
 # A pause marker older than this is ignored: the backup takes hours, but not
 # days, and a hook that died mid-backup must not mute the watcher for good.
 PAUSE_MAX_SECONDS = int(os.environ.get("STACK_HEALTH_PAUSE_MAX_SECONDS", "21600"))
@@ -133,6 +145,26 @@ def classify(state):
     health = (state.get("Health") or {}).get("Status")
     if health == "unhealthy":
         return "unhealthy"
+    return None
+
+
+# Komodo's `RepoState` (client/core/rs/src/entities/repo.rs): `Cloning`,
+# `Pulling`, `Building`, `Ok`, `Failed`, `Unknown`. Only the two settled states
+# are evidence. The three in-flight ones are the repo equivalent of a stack
+# mid-deploy, and `Unknown` is the serde default a repo carries when Komodo has
+# no verdict at all - neither of those may read as healthy by falling through a
+# `!= "Failed"` test.
+REPO_OK = "Ok"
+REPO_FAILED = "Failed"
+
+
+def repo_is_failing(info):
+    """Verdict on one repo's last clone or pull, or None when undecidable."""
+    state = (info or {}).get("state")
+    if state == REPO_FAILED:
+        return True
+    if state == REPO_OK:
+        return False
     return None
 
 
@@ -273,6 +305,28 @@ def failure_body(stack_name, stack_id, failures, duration=None):
     return "\n".join(lines)
 
 
+def repo_failure_body(repo, duration=None):
+    """The failing repo, in the same shape as `failure_body`'s blocks.
+
+    A failed pull has one subject, so there is no per-container block to repeat.
+    What a human needs beyond the name is which remote and branch was being
+    pulled and how far behind the clone is - `cloned_hash` against `latest_hash`
+    is what says "the pull never landed" rather than "the pull landed badly".
+    """
+    info = repo.get("info") or {}
+    lines = [f"**{repo.get('name')}** - last pull failed"]
+    if duration is not None:
+        lines.append(f"⏱️ Failing for: {human_duration(duration)}")
+    lines += [
+        "",
+        f"📝 Source: {info.get('repo') or 'unknown'}@{info.get('branch') or 'unknown'}",
+        f"🔖 Cloned: {info.get('cloned_hash') or 'none'} - latest: {info.get('latest_hash') or 'unknown'}",
+    ]
+    if repo.get("id") and KOMODO_HOST:
+        lines += ["", f"[Open in Komodo]({KOMODO_HOST}/repos/{repo['id']})"]
+    return "\n".join(lines)
+
+
 def human_duration(seconds):
     seconds = int(seconds)
     if seconds < 60:
@@ -372,6 +426,67 @@ def step(entry, bad, now):
 # Round
 # ---------------------------------------------------------------------------
 
+def check_repos(state, now):
+    """The repo half of a round (homelab-private issue #1792).
+
+    A Komodo Repo resource runs an `on_pull` hook - `scripts/deliver.sh` is one
+    - and a hook that exits non-zero fails the pull. Komodo records that and
+    renders it red, but it cannot alert on it: `AlertData` has no variant for a
+    failed `PullRepo`, and `RepoConfig` has no `failure_alert` field, so no
+    subscription can be made to fire. The verdict is therefore polled out of
+    `ListRepos` here, through the same debounce, state file and Discord path the
+    stack sweep already owns.
+
+    Level, not edge: a repo sits at `Failed` until its next successful pull, so
+    `step` is what turns that standing level into one message on the transition,
+    a reminder every six hours, and one on recovery.
+    """
+    repos = read("ListRepos", {})
+    repo_state = state.setdefault("repos", {})
+    checked = failing = 0
+
+    for repo in repos:
+        name = repo.get("name")
+        if repo.get("template"):
+            continue
+        info = repo.get("info") or {}
+        bad = repo_is_failing(info)
+        if bad is None:
+            log(f"repo {name}: state {info.get('state')!r}, tick undecidable")
+            continue
+        checked += 1
+        failing += 1 if bad else 0
+
+        entry = repo_state.setdefault(name, {})
+        outcome = step(entry, bad, now)
+        if not entry:
+            repo_state.pop(name, None)
+        if not outcome:
+            continue
+        kind, extra = outcome
+        if kind == "failure":
+            notify(
+                f"🛑 stack-health: {name} pull failed",
+                repo_failure_body(repo),
+                "failure",
+            )
+        elif kind == "repeat":
+            notify(
+                f"⚠️ stack-health: {name} pull is still failing",
+                repo_failure_body(repo, extra),
+                "warning",
+            )
+        else:
+            notify(
+                f"✅ stack-health: {name} pulled successfully again",
+                f"**{name}**\n⏱️ Failing for: {human_duration(extra)}",
+                "success",
+            )
+        log(f"repo {name}: {kind}")
+
+    log(f"repos checked={checked} failing={failing}")
+
+
 def run_once(state):
     now = time.time()
     if paused():
@@ -431,6 +546,7 @@ def run_once(state):
         log(f"{name}: {kind} ({info.get('status') or 'unknown'})")
 
     log(f"checked={checked} failing={failing} skipped={skipped} busy={len(busy)}")
+    check_repos(state, now)
 
 
 def kuma_push():
@@ -443,6 +559,18 @@ def kuma_push():
         requests.get(KUMA_PUSH_URL, timeout=10)
     except Exception as error:
         log(f"kuma push failed: {error}")
+
+
+def heartbeat():
+    """The marker this container's own healthcheck reads. Touched beside the Kuma
+    push and for the same reason: after a round completed, never at the top of the
+    loop, so the hang the probe exists to catch cannot keep it fresh. It stays out
+    of run_once, whose early return during the backup pause window would otherwise
+    let the marker go stale through every backup."""
+    try:
+        pathlib.Path(HEARTBEAT_FILE).touch()
+    except OSError as error:
+        log(f"heartbeat touch failed: {error}")
 
 
 def main():
@@ -461,6 +589,7 @@ def main():
                 )
             state["undecidable"] = 0
             kuma_push()
+            heartbeat()
         except Exception as error:
             # Consecutive, not cumulative: sparse flakiness over days must not
             # add up to a Komodo-is-down alert.
@@ -471,7 +600,8 @@ def main():
                 notify(
                     "⚠️ stack-health: Komodo API unreachable",
                     f"The Komodo API has not answered for {state['undecidable']} rounds "
-                    f"({type(error).__name__}: {error}). No stack is being watched right now.",
+                    f"({type(error).__name__}: {error}). No stack and no repo is being "
+                    "watched right now.",
                     "warning",
                 )
         save_state(state)
@@ -521,6 +651,47 @@ def _self_check():
     assert step(entry, True, now) is None
     assert step(entry, False, now + 60) is None
 
+    # Only the two settled repo states are evidence. Every in-flight state and
+    # the `Unknown` default must stay undecidable rather than read as healthy,
+    # which is the one way this predicate can fail silently.
+    assert repo_is_failing({"state": "Failed"}) is True
+    assert repo_is_failing({"state": "Ok"}) is False
+    for state_name in ("Cloning", "Pulling", "Building", "Unknown"):
+        assert repo_is_failing({"state": state_name}) is None, state_name
+    assert repo_is_failing({}) is None
+    assert repo_is_failing(None) is None
+
+    repo = {
+        "id": "abc",
+        "name": "qbittorrent-scripts",
+        "info": {
+            "state": "Failed",
+            "repo": "smoochy/homelab-private",
+            "branch": "main",
+            "cloned_hash": "85f7052",
+            "latest_hash": "9f0a1b2",
+        },
+    }
+    # The deeplink is only rendered when an address is configured, which it is
+    # not in a bare self-check run, so it is set for the length of this block.
+    global KOMODO_HOST
+    original_host, KOMODO_HOST = KOMODO_HOST, "https://komodo.example.com"
+    repo_body = repo_failure_body(repo).split("\n")
+    assert repo_body[0] == "**qbittorrent-scripts** - last pull failed", repo_body
+    assert repo_body[1] == "", repo_body
+    assert repo_body[2] == "📝 Source: smoochy/homelab-private@main", repo_body
+    assert repo_body[3] == "🔖 Cloned: 85f7052 - latest: 9f0a1b2", repo_body
+    assert repo_body[-1].endswith("/repos/abc)"), repo_body
+    # The reminder inserts its one line and changes nothing else, as above.
+    repo_repeat = repo_failure_body(repo, 21720).split("\n")
+    assert repo_repeat[1] == "⏱️ Failing for: 6h 2m", repo_repeat
+    assert repo_repeat[2:] == repo_body[1:], repo_repeat
+    # A repo Komodo knows nothing about still renders rather than raising.
+    assert repo_failure_body({"name": "x", "info": {}}).split("\n")[3] == (
+        "🔖 Cloned: none - latest: unknown"
+    )
+    KOMODO_HOST = original_host
+
     assert short_digest("ghcr.io/x/y:v1@sha256:0123456789abcdef") == "ghcr.io/x/y:v1@01234567"
     assert short_digest("ghcr.io/x/y:v1") == "ghcr.io/x/y:v1"
     assert short_digest("ghcr.io/x/y:v1", "sha256:0123456789abcdef") == "ghcr.io/x/y:v1@01234567"
@@ -552,6 +723,29 @@ def _self_check():
     assert repeat[0] == body[0], repeat[0]
     assert repeat[1] == "⏱️ Failing for: 6h 2m", repeat[1]
     assert repeat[2:] == body[1:], repeat
+
+    # The heartbeat marker is what the container's own healthcheck reads, so a
+    # touch that silently fails would show up as an unhealthy container and
+    # nowhere else. Written to a temporary path here rather than to /run, which
+    # only exists inside the container.
+    global HEARTBEAT_FILE
+    original, HEARTBEAT_FILE = HEARTBEAT_FILE, os.path.join(
+        tempfile.gettempdir(), "stack-health-self-check.heartbeat"
+    )
+    try:
+        heartbeat()
+        assert os.path.exists(HEARTBEAT_FILE), HEARTBEAT_FILE
+        before = os.stat(HEARTBEAT_FILE).st_mtime
+        os.utime(HEARTBEAT_FILE, (before - 300, before - 300))
+        heartbeat()
+        assert os.stat(HEARTBEAT_FILE).st_mtime > before - 300
+        os.remove(HEARTBEAT_FILE)
+        # An unwritable path must be logged and swallowed, never raised: the
+        # poller keeps watching stacks even when its own marker cannot be written.
+        HEARTBEAT_FILE = "/does/not/exist/stack-health.heartbeat"
+        heartbeat()
+    finally:
+        HEARTBEAT_FILE = original
 
     print("self-check ok")
 

@@ -23,13 +23,24 @@ services:
     # LAPI readiness. A 200 here proves the local API the bouncers talk to is
     # serving, which is the part of CrowdSec whose silent death is invisible.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
     image: ghcr.io/crowdsecurity/crowdsec:v1.7.8@sha256:2f527c9bb8b367120eb08b82890aa912ce96bfa1ada93dda0721700e4b4e0dde
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
     labels:
+      - kuma.crowdsec.docker.name=crowdsec - crowdsec
+      - kuma.crowdsec.docker.docker_container=crowdsec
+      - kuma.crowdsec.docker.docker_host=1
+      - kuma.crowdsec.docker.interval=300
+      - kuma.crowdsec.docker.max_retries=1
+      - kuma.crowdsec.docker.retry_interval=300
+      - kuma.crowdsec.docker.resend_interval=0
+      - 'kuma.crowdsec.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
     networks:
@@ -63,11 +74,11 @@ services:
       - MGID=98
       - MUID=99
       - TZ=Europe/Berlin
-    # Metabase boots the JVM, then migrates its application database, and only
+    # healthcheck: deviating start_period. Metabase boots the JVM, then migrates its application database, and only
     # answers /api/health once both are done - hence the deviating start_period,
     # measured against this container. Everything else is the house default.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -113,6 +124,53 @@ services:
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
       - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+  # Reaper for the per-IP bouncer rows the Traefik plugin leaves behind. Since
+  # CrowdSec 1.6.4 the LAPI duplicates a bouncer row per source IP that presents
+  # the same API key, so stream mode can track a `last_pull` per instance
+  # (crowdsecurity/crowdsec#3255). Every Traefik recreate lands on a fresh
+  # `smoonet` address and mints another `traefik-bouncer@<ip>` row flagged
+  # `auto_created`, and nothing ever removes it - 24 of them had piled up by
+  # 2026-08-27 (issue #1741). There is no LAPI option to turn the duplication
+  # off, and `cscli bouncers prune` is not usable unattended: it filters on age
+  # alone, so it also deletes `TRAEFIK` - the parent key, which by design never
+  # pulls itself - and `traefik-manager`, which only pulls while someone has its
+  # UI panel open. Both were deleted by exactly that command once already. This
+  # loop deletes only rows whose name carries the plugin's own `@<ip>` suffix.
+  crowdsec-bouncer-prune:
+    configs:
+      - source: bouncer_prune
+        target: /prune.sh
+    container_name: crowdsec-bouncer-prune
+    depends_on:
+      - crowdsec
+    entrypoint: ["/bin/sh", "/prune.sh"]
+    environment:
+      - HOST_CONTAINERNAME=crowdsec-bouncer-prune
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      # A round per week, deleting rows that stopped pulling 30 days ago. The
+      # live bouncer pulls every minute, so the threshold only has to outlast a
+      # long Traefik outage, not a Traefik restart.
+      - PRUNE_INTERVAL_SECONDS=604800
+      - PRUNE_MAX_AGE_DAYS=30
+      - TZ=Europe/Berlin
+    # healthcheck: none. This container sleeps for a week at a time, so any probe
+    # would report on the sleep rather than on the last round. A failed round is
+    # visible in the log store, and a missed one costs nothing but a few stale rows.
+    image: ghcr.io/crowdsecurity/crowdsec:v1.7.8@sha256:2f527c9bb8b367120eb08b82890aa912ce96bfa1ada93dda0721700e4b4e0dde
+    labels:
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    networks:
+      - smoonet
+    pids_limit: 512
+    restart: unless-stopped
+    # `cscli bouncers` talks to the state database directly rather than through
+    # the API, so this needs the same two mounts the LAPI itself has. WAL is on
+    # (see USE_WAL above), which is what makes a second writer on the file safe.
+    volumes:
+      - /mnt/user/appdata/crowdsec/:/etc/crowdsec:rw
+      - /mnt/user/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
   crowdsec-manager:
     container_name: crowdsec-manager
     depends_on:
@@ -136,7 +194,7 @@ services:
     # in the house wget form against the same endpoint, so the probe lives in the
     # repository and an image bump cannot change it unnoticed.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -198,12 +256,23 @@ services:
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
-    # No healthcheck on purpose. The bouncer runs on the host network and exposes no
+    # healthcheck: none. The bouncer runs on the host network and exposes no
     # HTTP or local socket of its own, so every probe available here would answer for
     # something other than the bouncer - an always-green check is worse than none.
     # Its liveness is covered by the stack-health poller instead.
     image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.36@sha256:4a7bd2e3eda81f9382f6e8571cebff7192e9b300e99d1cd5993b3b03580a0cb8
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
     labels:
+      - kuma.crowdsec-firewall-bouncer.docker.name=crowdsec - firewall-bouncer
+      - kuma.crowdsec-firewall-bouncer.docker.docker_container=crowdsec-firewall-bouncer
+      - kuma.crowdsec-firewall-bouncer.docker.docker_host=1
+      - kuma.crowdsec-firewall-bouncer.docker.interval=300
+      - kuma.crowdsec-firewall-bouncer.docker.max_retries=1
+      - kuma.crowdsec-firewall-bouncer.docker.retry_interval=300
+      - kuma.crowdsec-firewall-bouncer.docker.resend_interval=0
+      - 'kuma.crowdsec-firewall-bouncer.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
     network_mode: host
@@ -214,6 +283,42 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /mnt/user/appdata/crowdsec/bouncers/:/config:rw
+configs:
+  # The reaper loop, kept here rather than in a mounted script file so the stack
+  # stays deployable from the repository alone.
+  bouncer_prune:
+    content: |
+      #!/bin/sh
+      # Delete the auto-created per-IP rows of the Traefik bouncer plugin once they
+      # have stopped pulling. Everything else in the roster is left alone.
+      set -eu
+
+      MAX_AGE_DAYS="$${PRUNE_MAX_AGE_DAYS:-30}"
+      INTERVAL="$${PRUNE_INTERVAL_SECONDS:-604800}"
+      # The column layout this parser assumes. `cscli bouncers list -o raw` has
+      # gained fields across CrowdSec releases, and a shifted column would make the
+      # date test read the wrong field - which is how a name that never pulls ends
+      # up looking stale. A round whose header does not match is skipped, not guessed.
+      HEADER='name,ip,revoked,last_pull,type,version,auth_type'
+
+      while :; do
+        cutoff=$$(date -u -d @$$(( $$(date +%s) - MAX_AGE_DAYS * 86400 )) +%Y-%m-%dT%H:%M:%SZ)
+        roster=$$(cscli bouncers list -o raw)
+
+        if [ "$$(printf '%s\n' "$$roster" | head -1)" != "$$HEADER" ]; then
+          echo "prune: unexpected 'cscli bouncers list -o raw' header, skipping round" >&2
+          printf '%s\n' "$$roster" | head -1 >&2
+        else
+          printf '%s\n' "$$roster" \
+            | awk -F, -v c="$$cutoff" 'NR > 1 && $$1 ~ /^traefik-bouncer@/ && $$4 != "" && $$4 < c { print $$1 }' \
+            | while read -r name; do
+                cscli bouncers delete "$$name" && echo "prune: deleted $$name, last pull before $$cutoff"
+              done
+        fi
+
+        sleep "$$INTERVAL"
+      done
+
 networks:
   smoonet:
     external: true

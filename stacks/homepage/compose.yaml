@@ -1,6 +1,19 @@
 services:
   homepage:
     container_name: homepage
+    # healthcheck: mirrored from ghcr.io/gethomepage/homepage. $$PORT is the image's own
+    # variable, escaped so compose passes it through rather than interpolating it, and
+    # -Y off keeps the probe off any proxy the environment sets.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider -Y off http://127.0.0.1:$$PORT/api/healthcheck || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/gethomepage/homepage:v2.1.2@sha256:da9dca9ec258c628146bed1445da0853f2b88f0b10bafd97c091de807c363d60
     restart: unless-stopped
 

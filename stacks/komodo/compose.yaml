@@ -59,7 +59,7 @@ services:
     # the proxy is up and reaching the socket - not that the grants above are right,
     # which is a config question no probe can answer.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2375/_ping || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:2375/_ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -95,7 +95,7 @@ services:
     # Same probe as the write proxy above: /_ping proves liveness, not that POST=0
     # and the grants are still correct.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:2375/_ping || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:2375/_ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -122,6 +122,8 @@ services:
     # surface, so the native client answers instead, mirroring pg_isready on the
     # Postgres services. mongosh starts a Node process per probe, which is the most
     # expensive check in this repository - accepted, the image ships no lighter one.
+    # healthcheck: image-provided, mongosh --quiet --eval. The MongoDB image ships no HTTP
+    # client and its own shell answers instead.
     healthcheck:
       test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand({ping:1})\" || exit 1"]
       interval: 30s
@@ -188,7 +190,7 @@ services:
     # and /api/health are 404 - so it stands in for a readiness endpoint. It proves
     # the HTTP server is up, not that the database connection behind it is.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:9120/version || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9120/version || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -210,8 +212,7 @@ services:
       # Read-only view of the repositories Periphery clones. Core does not need
       # them to deploy, but the `trigger_procedure` action runs in Core's Deno
       # runtime and diffs the pulled commits here to decide which stacks changed.
-      # Without it every push sweeps all ~29 stacks. See the runbook at
-      # docs/superpowers/runbooks/update-stacks-action.md.
+      # Without it every push sweeps all ~29 stacks.
       - /mnt/user/appdata/komodo/repos:/etc/komodo/repos:ro
       ## Allows for systemd Periphery connection at
       ## "https://host.docker.internal:8120"
@@ -229,11 +230,18 @@ services:
       - net.unraid.docker.webui=${KOMODO_UNRAID_WEBGUI_URL}
     restart: unless-stopped
     env_file: .env
-    # Health probe. Two deviations: the image ships curl but the endpoint is HTTPS
-    # with a self-signed certificate, hence -k, and /version is the only path
-    # Periphery answers without authentication - /health, /ping and /api are 404.
+    # Health probe. The image ships wget, so wget is the client per the convention; the
+    # endpoint is HTTPS with a self-signed certificate, hence --no-check-certificate.
+    # /version is the only path Periphery answers without authentication - /health,
+    # /ping and /api are 404.
+    # healthcheck: --no-check-certificate. Periphery serves its own self-signed
+    # certificate, which the default probe form cannot validate.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsSk https://localhost:8120/version || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-check-certificate --no-verbose --tries=1 --spider https://127.0.0.1:8120/version || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -263,6 +271,19 @@ services:
       ## container's own filesystem, reports success, and nothing reaches the
       ## array.
       - /mnt/user/appdata/qbittorrent/scripts:/mnt/user/appdata/qbittorrent/scripts
+      ## The other destinations scripts/deliver.sh's BUNDLES table installs into.
+      ## Five of the six rows resolved to paths this container never bound, so
+      ## their writes landed in the container's own writable layer instead of
+      ## the array - invisible on the host, gone on recreate, while the run
+      ## still logged "installed" and exited 0; only the qbittorrent row above
+      ## ever actually reached the array. deliver.sh's own lint gate now
+      ## refuses the whole run rather than repeat that silently, so a new
+      ## BUNDLES row needs a matching bind added here too.
+      - /mnt/user/appdata/traefik/scripts/cloudflare_trusted_ips:/mnt/user/appdata/traefik/scripts/cloudflare_trusted_ips
+      - /mnt/user/appdata/traefik/rules:/mnt/user/appdata/traefik/rules
+      - /mnt/user/appdata/uptimekuma/scripts/appdata_backup_maintenance:/mnt/user/appdata/uptimekuma/scripts/appdata_backup_maintenance
+      - /mnt/user/appdata/tautulli/scripts/auto_tag:/mnt/user/appdata/tautulli/scripts/auto_tag
+      - /mnt/user/appdata/sabnzbd/scripts:/mnt/user/appdata/sabnzbd/scripts
     networks:
       - smoonet
 
@@ -278,10 +299,9 @@ networks:
   # Declared external deliberately, although this stack is the one that created
   # smoonet originally. The network carries an --ip-range of 172.18.128.0/17,
   # set by hand, which keeps Docker's dynamic allocator away from the seven
-  # addresses pinned below .128.0 - see "The bridge network smoonet" in
-  # docs/superpowers/runbooks/stack-recovery.md for the create command and the
-  # reasoning. An ip-range cannot be expressed here without Compose taking
-  # ownership of the network again, and a Compose-managed network whose labels
+  # addresses pinned below .128.0. An ip-range cannot be expressed here without
+  # Compose taking ownership of the network again, and a Compose-managed network
+  # whose labels
   # no longer match this file aborts the deploy outright. That deploy only ever
   # runs while the control plane is already broken, so the failure would land at
   # the worst possible moment. External means Compose attaches and nothing else:

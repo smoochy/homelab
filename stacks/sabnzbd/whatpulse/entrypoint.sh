@@ -119,10 +119,35 @@ track $!
 # The interface is always passed explicitly. Left to its own discovery the
 # service would also take eth0, which carries the same frames as br0, and every
 # byte would be counted twice (issue #1581).
+#
+# The heartbeat marker this container's healthcheck reads is written here rather
+# than beside the client (issues #1688, #1704), because this loop is the only
+# place that knows whether the capture is actually running. The service connects
+# out to the client and exits when that fails, so a container whose client is
+# gone, unlinked or wedged sits in the 15s backoff below - up while capturing
+# nothing. Marking only while the service is alive makes exactly that state go
+# stale, which is what the /dev/tcp port connect it replaces was watching, minus
+# the port connect the convention rules out.
+#
+# The marker lives in /run, in the writable layer: a healthcheck runs inside the
+# container, and host state would survive a restart and report a dead capture as
+# healthy. The toucher is killed with each attempt rather than left behind, so a
+# container that has retried for a week carries one of them, not four thousand.
 (
     while true; do
         log "starting the capture service on ${WP_INTERFACE}"
-        whatpulse-pcap-service -i "$WP_INTERFACE" -l "" -h 127.0.0.1 -p 3499
+        whatpulse-pcap-service -i "$WP_INTERFACE" -l "" -h 127.0.0.1 -p 3499 &
+        service_pid=$!
+        (
+            while kill -0 "$service_pid" 2>/dev/null; do
+                touch /run/whatpulse.heartbeat 2>/dev/null || :
+                sleep 30
+            done
+        ) &
+        heartbeat_pid=$!
+        wait "$service_pid"
+        kill "$heartbeat_pid" 2>/dev/null
+        wait "$heartbeat_pid" 2>/dev/null
         log "capture service exited, retrying in 15s"
         sleep 15
     done

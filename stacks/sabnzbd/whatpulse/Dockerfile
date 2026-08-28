@@ -52,6 +52,12 @@ RUN curl -fsSLo /tmp/whatpulse-pcap-service \
 
 FROM debian:bookworm-slim
 
+# The Unraid icon for every container built from this image - the host-namespace
+# client and both namespace riders. A container inherits its image's labels, so
+# this is the single place to bump it and the compose files carry no icon label
+# of their own.
+LABEL net.unraid.docker.icon=https://img.ptscreens.com/whatpulse.png
+
 # Debian rather than the alpine every other locally built image here uses: the
 # client is a Qt AppImage built against glibc and does not run on musl.
 #

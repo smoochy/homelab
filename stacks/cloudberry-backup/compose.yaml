@@ -42,6 +42,19 @@ services:
       - WEB_LISTENING_PORT=5800
       - WEB_LOCALHOST_ONLY=0
       - WEB_NOTIFICATION=0
+    # The jlesage web GUI on 5800 is the only HTTP surface this image exposes and it
+    # has no health endpoint, so the probe falls back to the root path. A 200 there
+    # means the GUI process is serving, which is the signal available here.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5800/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: jlesage/cloudberry-backup:v26.08.2@sha256:4b68ef8728a6eb24af5d8b53f4bad7096f6cdfe3b7521adba0efa3a6e7e47e31
     networks:
       smoonet:

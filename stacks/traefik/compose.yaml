@@ -113,6 +113,25 @@ services:
       - traefik.docker.network=smoonet
       - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
       ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 13, migration wave 3a. No basic_auth and no headers: measured in #1809, the
+      # endpoint answers 200 without credentials, and the columns on the old monitor are
+      # leftovers of a Traefik middleware that no longer exists.
+      - kuma.traefik.http.name=traefik - traefik
+      - kuma.traefik.http.url=https://traefik.example.com
+      - kuma.traefik.http.method=GET
+      - 'kuma.traefik.http.accepted_statuscodes=["200-299"]'
+      - kuma.traefik.http.max_redirects=10
+      - kuma.traefik.http.http_body_encoding=json
+      - kuma.traefik.http.timeout=4
+      - kuma.traefik.http.interval=300
+      - kuma.traefik.http.max_retries=1
+      - kuma.traefik.http.retry_interval=300
+      - kuma.traefik.http.resend_interval=0
+      - kuma.traefik.http.ignore_tls=false
+      - kuma.traefik.http.expiry_notification=true
+      - kuma.traefik.http.upside_down=false
+      - 'kuma.traefik.http.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/unraid-templates/master/traefik/traefik.png
       - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
@@ -145,6 +164,8 @@ services:
     # which checks that the database files were refreshed, and that is the only
     # meaningful signal here - declared explicitly so an image bump cannot change it
     # unnoticed.
+    # healthcheck: image-provided, /usr/bin/healthcheck.sh. The container has no listening
+    # port, so the image's own script is the only meaningful signal.
     healthcheck:
       test: ["CMD", "/usr/bin/healthcheck.sh"]
       interval: 30s
@@ -157,7 +178,18 @@ services:
       resources:
         limits:
           pids: 2048
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
     labels:
+      - kuma.geoipupdate.docker.name=traefik - geoipupdate
+      - kuma.geoipupdate.docker.docker_container=geoipupdate
+      - kuma.geoipupdate.docker.docker_host=1
+      - kuma.geoipupdate.docker.interval=300
+      - kuma.geoipupdate.docker.max_retries=1
+      - kuma.geoipupdate.docker.retry_interval=300
+      - kuma.geoipupdate.docker.resend_interval=0
+      - 'kuma.geoipupdate.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://raw.githubusercontent.com/tritones/unraid-templates/main/templates/img/geoipupdate.png
   traefik-manager:
@@ -290,9 +322,8 @@ services:
       - NODE_ENV=production
       - TZ=Europe/Berlin
 
-    # Health probe. Deviation from the `localhost` default: inside this container
-    # localhost resolves to ::1, where the dashboard does not listen, so the probe
-    # uses the literal 127.0.0.1. The UI root is the only surface it exposes.
+    # Health probe. The UI root is the only surface it exposes, so it stands in for a
+    # health endpoint.
     healthcheck:
       test:
         [
@@ -375,7 +406,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "wget --no-verbose --tries=1 --spider http://localhost:5000/ || exit 1",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1",
         ]
       interval: 30s
       timeout: 10s
@@ -387,7 +418,18 @@ services:
       resources:
         limits:
           pids: 2048
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
     labels:
+      - kuma.traefik-log-dashboard-agent.docker.name=traefik - log-dashboard-agent
+      - kuma.traefik-log-dashboard-agent.docker.docker_container=traefik-log-dashboard-agent
+      - kuma.traefik-log-dashboard-agent.docker.docker_host=1
+      - kuma.traefik-log-dashboard-agent.docker.interval=300
+      - kuma.traefik-log-dashboard-agent.docker.max_retries=1
+      - kuma.traefik-log-dashboard-agent.docker.retry_interval=300
+      - kuma.traefik-log-dashboard-agent.docker.resend_interval=0
+      - 'kuma.traefik-log-dashboard-agent.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=traefik
       - net.unraid.docker.icon=https://github.com/user-attachments/assets/e6cf097b-2232-4c2c-ba55-5de780724aed
 configs:

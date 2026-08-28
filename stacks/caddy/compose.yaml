@@ -11,6 +11,19 @@ services:
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
+    # The admin API on 2019 is the only endpoint that answers without a configured site,
+    # so /config/ is the readiness signal here: it returns the live configuration once
+    # caddy-docker-proxy has generated and loaded it.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:2019/config/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.4@sha256:7937ad48e260fea5d47fe8150a8cbd9f9e6b67855dbc1810bf7adf3911636495
     restart: unless-stopped
     # Caddy Status-Seite unter caddy.example.com

@@ -1,6 +1,12 @@
 services:
   notifiarr:
     container_name: Notifiarr
+    # notifiarr.com keys a client's site-tunnel preference (primary and backup
+    # region) to the hostname the client reports. Without this the hostname is
+    # the random container ID, so every recreate registers as a brand new client
+    # and the website hands back the nine-region default list with carolina
+    # first, silently replacing the germany/paris pair.
+    hostname: homelab-host-notifiarr
     deploy:
       resources:
         limits:
@@ -13,6 +19,18 @@ services:
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
+    # Notifiarr serves its UI on 5454 and exposes no dedicated health endpoint, so the
+    # probe falls back to the root path.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5454/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: golift/notifiarr:0.9.5@sha256:a9a1f37f924d740107874675df6b6a5edd87e5f66ca72ad27481a4bdfd42d162
     networks:
       smoonet:

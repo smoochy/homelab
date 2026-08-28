@@ -5,6 +5,11 @@ services:
       POSTGRES_DB: ${PG_DB}
       POSTGRES_PASSWORD: ${PG_PASS}
       POSTGRES_USER: ${PG_USER}
+    # healthcheck: deviating timings. Both server and worker gate on this container being
+    # healthy, so it gets more retries and a shorter start_period than the house default
+    # to keep the dependent start-up short.
+    # healthcheck: image-provided, pg_isready. The Postgres image ships no HTTP client and
+    # its own readiness client answers instead.
     healthcheck:
       interval: 30s
       retries: 5
@@ -13,7 +18,7 @@ services:
         - CMD-SHELL
         - pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
       timeout: 5s
-    image: docker.io/library/postgres:18.6-alpine3.23@sha256:697c180dbf244d3ce4a8f4cbc0156cde840af055c1bf8b76aebe422a4822086f
+    image: postgres:18.6@sha256:06cad38a5d9f5d24b4d83d86def30795d5e4b757fedbf5281172b576dedcd941
     networks:
       - authentik
     restart: unless-stopped
@@ -31,6 +36,15 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
+    # healthcheck: image-provided, ak healthcheck. The image ships neither wget nor curl;
+    # `ak healthcheck` is the command upstream's own compose uses, and it queries the
+    # server's /-/health/ready/ endpoint itself.
+    healthcheck:
+      test: ["CMD", "ak", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/goauthentik/server:2026.8.0@sha256:7421753cfea67e89a6d295a1f0173ccea3866b33768c88dad90453b151cdcfd5
     networks:
       - authentik
@@ -92,10 +106,31 @@ services:
       # starting containers. The stack is not deployed at the moment, so the move to
       # the read-only proxy cannot be proven safe and is deliberately not made.
       DOCKER_HOST: tcp://dockerproxy:2375
+    # healthcheck: none. The worker runs the task queue and opens no listener of its own,
+    # so there is no endpoint to probe; the only surfaces reachable from this container
+    # belong to postgresql and the server, and a probe against those would answer green
+    # for something other than the worker. Its liveness is covered by the stack-health
+    # poller instead.
     image: ghcr.io/goauthentik/server:2026.8.0@sha256:7421753cfea67e89a6d295a1f0173ccea3866b33768c88dad90453b151cdcfd5
     networks:
       - authentik
       - smoonet
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.authentik-worker.docker.name=authentik - worker
+      - kuma.authentik-worker.docker.docker_container=authentik-worker
+      - kuma.authentik-worker.docker.docker_host=1
+      - kuma.authentik-worker.docker.interval=300
+      - kuma.authentik-worker.docker.max_retries=1
+      - kuma.authentik-worker.docker.retry_interval=300
+      - kuma.authentik-worker.docker.resend_interval=0
+      # The hand-built monitor was paused, and a rebuild comes up running unless this
+      # says otherwise. The stack is not deployed at the moment, so an active monitor
+      # would alert on exactly that.
+      - kuma.authentik-worker.docker.active=false
+      - 'kuma.authentik-worker.docker.notification_id_list={"1": true}'
     restart: unless-stopped
     shm_size: 512mb
     user: root

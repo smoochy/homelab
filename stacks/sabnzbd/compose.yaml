@@ -2,6 +2,15 @@ services:
   gluetun:
     container_name: gluetun
     hostname: gluetun
+    # healthcheck: mirrored from qmcgaw/gluetun. The entrypoint's own healthcheck is
+    # the VPN tunnel's liveness signal and nothing outside the image can reconstruct
+    # it; declaring it here keeps an image bump from changing the probe unnoticed.
+    healthcheck:
+      test: ["CMD-SHELL", "/gluetun-entrypoint healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: qmcgaw/gluetun:v3.41.3@sha256:fa19cc76b2af13d57a8d3dc3066f2ada061b1c761b8aecf989b3877c0486e027
     restart: unless-stopped
 
@@ -21,6 +30,12 @@ services:
       - "8001:8000/tcp" # HTTP control server (alt)
       - "8082:8080/tcp" # HTTP control server
       - "8888:8888/tcp" # HTTP proxy [web:38][web:49]
+      # The WhatPulse rider's front end. It shares this namespace and has no
+      # network stack of its own, so its ports are published here and have to
+      # stay free across this whole stack and free of the qBittorrent rider's
+      # 6798/5998, which land on the same host (issue #1836).
+      - "6797:6797/tcp" # whatpulse noVNC
+      - "5997:5997/tcp" # whatpulse VNC
     # Volumes
     cap_add:
       - NET_ADMIN
@@ -133,13 +148,34 @@ services:
 
       # Logging
       - LOG_LEVEL=info
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
     labels:
+      - kuma.gluetun.docker.name=sabnzbd - gluetun
+      - kuma.gluetun.docker.docker_container=gluetun
+      - kuma.gluetun.docker.docker_host=1
+      - kuma.gluetun.docker.interval=300
+      - kuma.gluetun.docker.max_retries=1
+      - kuma.gluetun.docker.retry_interval=300
+      - kuma.gluetun.docker.resend_interval=0
+      - 'kuma.gluetun.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=gluetun
       - net.unraid.docker.icon=https://raw.githubusercontent.com/qdm12/gluetun/master/doc/logo_256.png
   sabnzbd:
     container_name: sabnzbd
     depends_on:
       - gluetun
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider 'http://127.0.0.1:8080/api?mode=version' || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/linuxserver/sabnzbd:5.1.1-ls267@sha256:8fb83ceffaca6b9c0cc8d86b1acb525818fe3ce1e5a5ee9e9dd1227a26dce57d
     restart: unless-stopped
 
@@ -157,6 +193,11 @@ services:
       # host-cron ones stay in /mnt/user/appdata/sabnzbd/scripts with their own
       # state beside them.
       - /mnt/user/appdata/qbittorrent/scripts:/scripts:ro
+      # The same live tuning directory the qBittorrent riders read (#1839), so
+      # the P2P NFO source order can be flipped without a redeploy. The
+      # directory is mounted, not the file, because an editor that replaces
+      # tuning.yaml on save would otherwise leave a stale inode behind.
+      - /mnt/user/appdata/qbittorrent/tuning:/tuning:ro
       - /mnt/user/appdata/sabnzbd:/config # App config [web:53]
       - /mnt/user/data/:/data/ # Downloads/incomplete
     # Environment variables
@@ -170,6 +211,13 @@ services:
       - HOST_OS=Unraid
       - PGID=100
       - PUID=99
+      # The floor for the P2P NFO source order (#1839): crowdnfo or xrel.
+      # tuning.yaml overrides it live, this value is what stands when the file
+      # is absent, silent or wrong.
+      - UPPOLLO_P2P_NFO_FIRST=crowdnfo
+      # Whether the other source is asked at all once the first comes up empty.
+      # False stages the release without an NFO instead.
+      - UPPOLLO_P2P_NFO_FALLBACK=true
       - TZ=Europe/Berlin
       - UMASK=000
 
@@ -209,6 +257,150 @@ services:
       - com.smoochy.komodo.restore_stack=gluetun
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/sabnzbd.png
       - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+
+  whatpulse:
+    container_name: sabnzbd-whatpulse
+    depends_on:
+      - gluetun
+    # The image recipe lives here, and the qBittorrent rider builds the same
+    # context through `./../sabnzbd/whatpulse`: one recipe, two consumers, no
+    # copy. It used to live in stacks/whatpulse/ and moved here when the
+    # host-namespace client was retired (issue #1849) - here rather than into
+    # qbittorrent because that stack is excluded from the public export, and this
+    # one has to keep a build context that resolves in the mirror. Both contexts
+    # are mirrored in scripts/src-rev.sh, so a change to the client's Dockerfile
+    # or entrypoint bumps this marker too and Komodo redeploys both stacks
+    # (issue #935).
+    build:
+      context: ./whatpulse
+      args:
+        # Bump with scripts/src-rev.sh - see issue #935.
+        SRC_REV: 7322b2ccabbb
+    image: whatpulse:local
+    # Built locally and never published, so a registry pull must not be attempted.
+    pull_policy: build
+    restart: unless-stopped
+
+    # No `hostname:`, although WhatPulse is exactly the service the hostname rule
+    # is written for: Docker refuses `hostname:` together with a joined network
+    # namespace, so this container reports gluetun's. It is harmless here because
+    # the computer is not registered from the reported hostname - it is linked
+    # once by hand to the existing `homelab-host` (#1830) and that link lives in the
+    # persisted data directory below (#1595).
+    #
+    # The whole point of this rider (issues #1817, #1836). SABnzbd's downloads
+    # terminate in this namespace, and traffic that terminates in another
+    # namespace is never attributed to the host client: the tunnel's encrypted
+    # outer packets cross br0 uncounted (#1822).
+    network_mode: "container:gluetun"
+
+    # NET_RAW for the packet socket, NET_ADMIN for promiscuous mode. The capture
+    # service tests for uid 0 itself, so a file capability replaces neither.
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+    # The interface pin (issue #1612): the capture service prefers a global
+    # AF_PACKET ring bound to every interface and honours `-i` only on its
+    # libpcap fallback. The profile fails `setsockopt(SOL_PACKET,
+    # PACKET_RX_RING)` and nothing else, which sends the service down the
+    # per-interface path. This copy of the profile is the reference one, next to
+    # the image recipe both riders build; stacks/qbittorrent/ carries a duplicate
+    # because the path resolves against each compose file's own directory, and
+    # the two must be edited together (issue #1849).
+    security_opt:
+      - seccomp=./seccomp-no-packet-ring.json
+
+    volumes:
+      # Its own data directory, separate from the host client's and from the
+      # qBittorrent rider's: three clients, three settings files and three
+      # statistics databases. Without it the linked computer is lost on every
+      # recreate and has to be logged in and linked again by hand (issue #1595).
+      #
+      # Deliberately beside the sabnzbd appdata directory rather than inside it:
+      # the linuxserver sabnzbd image mounts `/mnt/user/appdata/sabnzbd` as
+      # `/config` and chowns that tree to its own `PUID`/`PGID` (99:100) on every
+      # start. A subdirectory of it is taken with it, and the client runs as uid
+      # 1000, so it loses write access to its own database - the client then
+      # reports the database as read-only, never opens its listener on 3499 and
+      # counts nothing, while the container stays healthy.
+      - /mnt/user/appdata/sabnzbd-whatpulse:/home/whatpulse/.local/share
+
+    environment:
+      - HOST_CONTAINERNAME=sabnzbd-whatpulse
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+      # The namespace's own veth, not gluetun's `VPN_INTERFACE` `tun0`. The
+      # tunnel device was the obvious pin - it carries the decrypted payload -
+      # but a TUN or WireGuard device is a point-to-point layer-3 device with no
+      # MAC address, and the client keys its interfaces on the MAC: such a pin
+      # stores nothing at all (issue #1846). `eth0` has a MAC, and every
+      # tunnelled byte crosses it in its encrypted form, so it is the only
+      # interface in this namespace that can be counted.
+      - WP_INTERFACE=eth0
+      # The web VNC front end, the only way to log this client in on a server
+      # with no desktop. A rider has no network stack of its own, so these two
+      # ports are published in gluetun's `ports:` block above.
+      - WP_WEB_PORT=6797
+      - WP_VNC_PORT=5997
+      - WP_VNC_PASSWORD=${WHATPULSE_VNC_PASSWORD}
+
+    # healthcheck: heartbeat marker rather than an HTTP probe, for the reason
+    # stacks/whatpulse/ gives - the web front end stays up while the client
+    # behind it is gone, and the client's own port answers even when the capture
+    # failed to start. The toucher writes /run/whatpulse.heartbeat every 30
+    # seconds only while both halves are alive; the threshold is three of those.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /run/whatpulse.heartbeat && [ $(( $(date +%s) - $(stat -c %Y /run/whatpulse.heartbeat) )) -lt 90 ]",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # The Qt client unpacks, starts an X server, a window manager and a tray
+      # before it listens, so it is slower to become healthy than a service image.
+      start_period: 180s
+
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal only, and that is the whole exposure decision (issues #1626,
+      # #1836). The web front end is remote control of a logged-in desktop
+      # guarded by `WHATPULSE_VNC_PASSWORD` alone, and neither internal chain
+      # carries authentication, so there is no external router and no header
+      # bypass beside it - only the `websecure-internal` entrypoint, which is not
+      # the one the internet reaches.
+      - traefik.http.routers.${WHATPULSE_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${WHATPULSE_SERVICE}-internal.middlewares=${WHATPULSE_SERVICE}-vnc,chain-internal@file
+      # The bare host lands on the noVNC client rather than on the directory
+      # index the front end serves at the root. Only the root is redirected, so
+      # every asset `vnc.html` pulls afterwards still resolves. The doubled `$`
+      # are Compose escapes: Traefik sees `$` and `${1}`.
+      - traefik.http.middlewares.${WHATPULSE_SERVICE}-vnc.redirectregex.regex=^https?://([^/]+)/?$$
+      - traefik.http.middlewares.${WHATPULSE_SERVICE}-vnc.redirectregex.replacement=https://$${1}/vnc.html
+      - traefik.http.routers.${WHATPULSE_SERVICE}-internal.rule=Host(`${WHATPULSE_TRAEFIK_INTERNAL_HOST}`)
+      - traefik.http.routers.${WHATPULSE_SERVICE}-internal.service=${WHATPULSE_SERVICE}
+      - traefik.http.routers.${WHATPULSE_SERVICE}-internal.tls=true
+      # The host IP and the published port rather than `http://gluetun:<port>`,
+      # because this rider has no address on smoonet of its own and gluetun's
+      # firewall permits only `192.0.2.0/24` inbound - the LAN path is the one
+      # its own published ports already prove works.
+      - traefik.http.services.${WHATPULSE_SERVICE}.loadbalancer.server.url=${WHATPULSE_TRAEFIK_INTERNAL_URL}
+      # No `traefik.docker.network` hint: there is no smoonet address on this
+      # container for the Docker provider to pick, which is why the service names
+      # its upstream explicitly above.
+      ## End Traefik Config
+      # No icon label here: the image carries `net.unraid.docker.icon` itself
+      # (pull request #1622), because Unraid reads it off the running container
+      # either way and one place to bump beats two that drift.
+      - com.smoochy.komodo.restore_stack=gluetun
+      # The noVNC front end serves the client only under `/vnc.html`; the bare
+      # root is the launcher page, so the path is part of the link.
+      - net.unraid.docker.webui=${WHATPULSE_UNRAID_WEBGUI_URL}/vnc.html
 networks:
   smoonet:
     external: true

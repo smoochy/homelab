@@ -35,6 +35,8 @@ services:
     # it ships curl but no wget, and it bakes its own `extra/healthcheck` script.
     # The baked check is declared here explicitly so the probe lives in the
     # repository and an image bump cannot change it unnoticed.
+    # healthcheck: image-provided, extra/healthcheck. The image bakes its own health
+    # script and it is declared here explicitly.
     healthcheck:
       test: ["CMD", "extra/healthcheck"]
       interval: 30s

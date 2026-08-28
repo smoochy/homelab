@@ -1,6 +1,19 @@
 services:
   speedtest-tracker:
     container_name: speedtest-tracker
+    # The app serves on container port 1000. /api/health is not routed in this build -
+    # it answers 404 - so the probe uses the root path, which redirects to the UI once
+    # the web server is up.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:1000/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/linuxserver/speedtest-tracker:v1.15.0-ls169@sha256:59518a6f2b49254b310cc2e543320dd3fbaa80381b588cd1f2bf116073698c27
     restart: unless-stopped
 

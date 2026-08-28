@@ -8,6 +8,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 ## Services
 
+- `probe-busybox`
 - `cloudflared`
 
 ## Upstream

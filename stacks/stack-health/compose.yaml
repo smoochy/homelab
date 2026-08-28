@@ -52,12 +52,26 @@ services:
       # already excluded by its template flag and needs no entry here.
       - STACK_HEALTH_EXCLUDE_STACKS=${STACK_HEALTH_EXCLUDE_STACKS:-}
 
-    # No healthcheck. Deliberate deviation from the repo-wide rule: this
-    # container serves nothing, so every probe available to it would be a
-    # liveness check of the shell rather than of the poll loop, and an
-    # always-green check is worse than none. Its real health signal is the
-    # Uptime Kuma push monitor above, which observes the loop from outside and
-    # trips when a round stops completing.
+    # healthcheck: heartbeat marker rather than an HTTP probe. This container serves
+    # nothing, so there is no endpoint to request and a shell or process probe would be
+    # a liveness check of the container rather than of the poll loop. The poller touches
+    # /run/stack-health.heartbeat beside its Kuma push - after a round completed, never
+    # at the head of the loop - so the marker's freshness is the loop's own signal and a
+    # hung round makes it go stale. The threshold is three of the poller's own 60s
+    # intervals. The `test -f` guard is what makes a missing marker a designed failure
+    # rather than an arithmetic syntax error. The Uptime Kuma push monitor stays the
+    # outside observer; this probe is the inside one.
+    # healthcheck: heartbeat marker, three times the poller's own 60s interval.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /run/stack-health.heartbeat && [ $(( $(date +%s) - $(stat -c %Y /run/stack-health.heartbeat) )) -lt 180 ]",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     labels:
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/uptime-kuma.png

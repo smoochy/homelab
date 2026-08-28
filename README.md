@@ -70,7 +70,7 @@ The repository currently spans several homelab areas:
   `komodo`, `authentik`, `homepage`, `dozzle`
 - Media, requests, indexing, and adjacent tooling:
   `radarr`, `sonarr`, `sabnzbd`, `prowlarr`, `seerr`, `episeerr`, `plex`,
-  `tautulli`, `tracearr`, `umlautadaptarr`, `notifiarr`
+  `tautulli`, `tracearr`, `umlautadaptarr-ex`, `notifiarr`
 - Utility and infrastructure services:
   `mosquitto`, `registry`, `speedtest-tracker`, `homebridge`,
   `changedetection-io`, `cloudberry-backup`, `uptime-kuma`,

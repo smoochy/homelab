@@ -3,9 +3,15 @@ services:
     container_name: dozzle
     image: amir20/dozzle:v10.7.4@sha256:068025ea622a1ce3e343a138dd9a962429b5187a133aca301bb4991fe7d2b708
     restart: unless-stopped
-    # No healthcheck on purpose: the image is distroless and carries no shell and
-    # no probe tool at all, so the only check that could be written here would be
-    # green whatever the container is doing. See homelab-private#877.
+    # healthcheck: image-provided, /dozzle healthcheck. The image ships neither wget nor
+    # curl and carries no shell, so the probe runs the binary's own health subcommand in
+    # `CMD` form; it requests http://localhost:8080/healthcheck inside the container.
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
     # Network
     networks:

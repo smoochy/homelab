@@ -1,6 +1,19 @@
 services:
   tautulli:
     container_name: tautulli
+    # healthcheck: mirrored from ghcr.io/tautulli/tautulli. The image probes /status
+    # over HTTPS first and falls back to HTTP, which covers both HTTPS settings; the
+    # image ships no wget, so curl is the client here.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -ILfks https://localhost:8181/status > /dev/null || curl -ILfs http://localhost:8181/status > /dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/tautulli/tautulli:v2.17.2@sha256:864245fb24830ef6516b5f383bf4d8ba37939ae2f0574dc0217ca02fba4301ff
     restart: unless-stopped
 

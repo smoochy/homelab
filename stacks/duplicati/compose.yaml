@@ -1,6 +1,18 @@
 services:
   duplicati:
     container_name: duplicati
+    # Duplicati serves its UI on 8200 and exposes no dedicated health endpoint, so the
+    # probe falls back to the root path.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8200/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/linuxserver/duplicati:v2.3.0.4_stable_2026-07-09-ls305@sha256:b41c23f678002c41857ce82b7a301457b82d448d0c48749c486121796c308bad
     restart: unless-stopped
     deploy:

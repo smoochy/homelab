@@ -1,6 +1,31 @@
 services:
+  # Fills the probe-bin volume with a static busybox and exits. VictoriaLogs is distroless
+  # and ships no HTTP client, so its probe runs that binary out of the read-only mount.
+  probe-busybox:
+    container_name: victorialogs-probe-busybox
+    # healthcheck: none, one-shot init container. It copies the binary and exits 0, so
+    # there is nothing left running to probe.
+    image: busybox:1.37.0-musl@sha256:fc6dddc4c44b1bfe37f41cae8e67d1693828e8f42a91862816d7953e2c9d3f23
+    command: ["cp", "/bin/busybox", "/probe/busybox"]
+    restart: "no"
+    volumes:
+      - probe-bin:/probe:rw
+
   victorialogs:
     container_name: victorialogs
+    depends_on:
+      probe-busybox:
+        condition: service_completed_successfully
+    # VictoriaLogs serves /health but ships neither an HTTP client nor a shell, so the
+    # default `wget --spider` form runs from the static busybox mounted at /probe.
+    # `127.0.0.1` rather than `localhost`: BusyBox wget prefers ::1, which fails against
+    # an IPv4-only listener.
+    healthcheck:
+      test: ["CMD", "/probe/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9428/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: victoriametrics/victoria-logs:v1.52.0@sha256:47b820890d64c4575a2a0a46415dcd8a4fd59a0f1fcd6a377693d7aea639442e
     restart: unless-stopped
 
@@ -30,6 +55,7 @@ services:
     # Volumes
     volumes:
       - /mnt/user/appdata/victorialogs:/victoria-logs-data:rw # cache-only share, the mover never touches it
+      - probe-bin:/probe:ro # static busybox for the healthcheck, filled by probe-busybox
     # Environment variables
     environment:
       - HOST_CONTAINERNAME=${SERVICE}
@@ -76,7 +102,9 @@ services:
   # Evaluation of the log store, decided in issue #983 and built in #1045. It
   # rides in this stack rather than its own so the query path stays one hop and
   # one file. The cost is real and accepted: a rule edit redeploys the log store
-  # with it, and rules are edited more often than the store is.
+  # with it, and rules are edited more often than the store is. That redeploy
+  # only recreates this container because of the config-rev label further down;
+  # Compose does not hash the config content itself (#1738).
   vmalert:
     container_name: vmalert
     image: victoriametrics/vmalert:v1.150.0@sha256:c6e6c1ef6e43c09510dd0aff264bf0ea319c1bdfced1ccc79dad1545950a7989
@@ -125,15 +153,25 @@ services:
         max-file: "3"
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8880/health"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8880/health || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 60s
 
     pids_limit: 2048
 
     labels:
+      # The hash of the vmalert_rules content below, maintained by
+      # scripts/config-rev.sh. Compose leaves the content of a top-level config
+      # out of the service hash, so without this label a rules edit deploys
+      # green and leaves the container mounting the old file (#1738). Never
+      # edited by hand; `scripts/config-rev.sh` writes it and CI checks it.
+      - com.smoochy.config-rev.vmalert_rules=40fc10353a81
       - com.smoochy.komodo.restore_stack=victorialogs
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/victoriametrics.png
 
@@ -183,11 +221,15 @@ services:
         max-file: "3"
 
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9093/-/healthy"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:9093/-/healthy || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 20s
+      start_period: 60s
 
     pids_limit: 2048
 
@@ -205,6 +247,9 @@ services:
       - traefik.docker.network=smoonet
       - traefik.http.services.alertmanager.loadbalancer.server.url=${ALERTMANAGER_INTERNAL_URL}
       ## End Traefik Config
+      # Same marker as vmalert carries, for the alertmanager_config content
+      # below. See scripts/config-rev.sh and #1738.
+      - com.smoochy.config-rev.alertmanager_config=2d81504c6a85
       - com.smoochy.komodo.restore_stack=victorialogs
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png
 
@@ -232,6 +277,15 @@ configs:
                 | filter level:=error
                 | stats by (event, component) count() as n
                 | filter n:>0
+              # The expression's window is exactly one evaluation interval, so a
+              # single sporadic error matches for one eval and is gone at the
+              # next one. Without this, every isolated log line produced a
+              # FIRING and then a RESOLVED notification 15 minutes later, and an
+              # error that recurs every few evaluations ping-ponged forever.
+              # Holding the alert firing for an hour past its last match folds
+              # those repeats into one alert, which `repeat_interval: 6h` then
+              # caps at one message.
+              keep_firing_for: 1h
               annotations:
                 # `$$` throughout: compose interpolates this inline config
                 # before the container ever sees it, so a single `$` would be
@@ -249,6 +303,8 @@ configs:
                 | filter event:in("space.emergency", "repair.gave_up")
                 | stats by (event, component) count() as n
                 | filter n:>0
+              # Same flapping reason as RiderError above.
+              keep_firing_for: 1h
               annotations:
                 summary: '{{ $$labels.component }}: {{ $$labels.event }}'
                 description: >-
@@ -273,13 +329,20 @@ configs:
         - name: discord
           discord_configs:
             - webhook_url: ${DISCORD_LOG_ALERT_WEBHOOK}
-              send_resolved: true
+              # A resolve here only means "no further matching log line in the
+              # last hour", never "the rider recovered", so the message carried
+              # no information and doubled the channel's volume. Recovery is
+              # read from the absence of new FIRING messages instead.
+              send_resolved: false
               # Terse on purpose: Discord hard-caps a message at 2000 characters
               # and a batch of firing riders would otherwise run into it.
               title: '{{ .Status | toUpper }} {{ .CommonLabels.component }} {{ .CommonLabels.event }}'
               message: >-
                 {{ range .Alerts }}{{ .Annotations.description }}
                 {{ end }}
+
+volumes:
+  probe-bin:
 
 networks:
   smoonet:

@@ -10,6 +10,7 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 - `crowdsec`
 - `crowdsec-dashboard`
+- `crowdsec-bouncer-prune`
 - `crowdsec-manager`
 - `crowdsec-firewall-bouncer`
 
@@ -24,6 +25,11 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 - Website: [https://www.metabase.com/](https://www.metabase.com/)
 - GitHub: [https://github.com/metabase/metabase](https://github.com/metabase/metabase)
+
+### `crowdsec-bouncer-prune`
+
+- Website: [https://www.crowdsec.net/](https://www.crowdsec.net/)
+- GitHub: [https://github.com/crowdsecurity/crowdsec](https://github.com/crowdsecurity/crowdsec)
 
 ### `crowdsec-manager`
 

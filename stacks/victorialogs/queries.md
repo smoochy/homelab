@@ -81,8 +81,9 @@ _time:24h <level pipeline> | filter lvl:* -lvl:in("trace", "debug", "info", "not
 
 `vmalert` evaluates the rider rules every 15 minutes and hands anything firing to Alertmanager, which groups on `(event, component)` and repeats at most every 6 hours. Both run in this stack.
 
-- Rules: the `vmalert_rules` config in `compose.yaml`.
+- Rules: the `vmalert_rules` config in `compose.yaml`. Editing that content is not enough on its own - Compose leaves an inline config's content out of the service hash, so the deploy would succeed and the container would keep mounting the old file. Run `scripts/config-rev.sh` and commit the moved `com.smoochy.config-rev.*` label with the edit; CI repairs and enforces it (#1738).
 - Silences and the current alert list: Alertmanager's own UI at `https://${ALERTMANAGER_EXTERNAL_URL}`.
+- An alert stays firing for an hour after its last match (`keep_firing_for`), and Discord gets no resolved notification. A rule's expression only looks back one evaluation interval, so without that hold a single error line fired and resolved 15 minutes later, and a recurring one alternated between the two forever. Recovery is read from the absence of new firing messages.
 - vmalert keeps its firing/pending state in memory only - there is no VictoriaMetrics instance to remote-write it to. A redeploy of this stack therefore resets it, and a firing alert re-notifies once afterwards. That is the price of the two services living in the log store's own stack.
 
 Liveness is not here: VictoriaLogs cannot express absence, so a rider that stops emitting is watched by an Uptime Kuma push monitor instead (#983).

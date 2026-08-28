@@ -13,6 +13,18 @@ services:
       - TCP_PORT_8581=8581
       - TZ=Europe/Berlin
       - UMASK=0000
+    # The Homebridge UI on 8581 is the only HTTP surface here and it has no health
+    # endpoint, so the probe falls back to the root path.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8581/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: homebridge/homebridge:2026-08-17@sha256:e424c8007c522b978d55ed5cf07de99c635e4f72a1dfd893b587dccf76779cb2
     # Keep HomeKit/LAN discovery on br0, but use smoonet for Docker-internal
     # services like mosquitto. MQTT clients inside Homebridge should target the

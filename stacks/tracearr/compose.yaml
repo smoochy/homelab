@@ -8,15 +8,12 @@ services:
       - LOG_LEVEL=${TRACEARR_LOG_LEVEL}
       - PG_MAX_MEMORY=${TRACEARR_PG_MAX_MEMORY}
       - TZ=${TRACEARR_TZ}
+    # curl rather than wget because this image ships no wget.
     healthcheck:
       interval: 30s
       retries: 3
       start_period: 60s
-      test:
-        - CMD
-        - curl
-        - -f
-        - http://127.0.0.1:3000/health
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || exit 1"]
       timeout: 10s
     image: ghcr.io/connorgallopo/tracearr:supervised-2.1.0@sha256:66d308b96f1290678f71d5a02fef9f6205d327bb6329dee9aae684a9161813e7
     mem_limit: ${TRACEARR_MEM_LIMIT}

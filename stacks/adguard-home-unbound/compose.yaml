@@ -32,7 +32,7 @@ services:
 
     # Health probe against the sync service's own readiness endpoint.
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/healthz || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/healthz || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -73,6 +73,31 @@ services:
       - traefik.docker.network=smoonet
       - traefik.http.services.${ADGUARD_HOME_SYNC_SERVICE}.loadbalancer.server.url=${ADGUARD_HOME_SYNC_INTERNAL_URL}
       ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 42, migration wave 3a. This is the one http monitor of the twenty that really
+      # needs basic auth: #1809 measured 401 without it, and with a password of its own
+      # rather than the one the other monitors carried as a leftover. The password is
+      # interpolated from this stack's SOPS-encrypted .env per #1794; the user is a
+      # literal. The monitor prefix is the stack directory, adguard-home-unbound, not the
+      # compose project adguard-home, so it matches the dns monitors that already use it.
+      - kuma.adguard-home-sync.http.name=adguard-home-unbound - adguard-home-sync
+      - kuma.adguard-home-sync.http.url=https://adghsync.example.com
+      - kuma.adguard-home-sync.http.method=GET
+      - 'kuma.adguard-home-sync.http.accepted_statuscodes=["200-299"]'
+      - kuma.adguard-home-sync.http.max_redirects=10
+      - kuma.adguard-home-sync.http.http_body_encoding=json
+      - kuma.adguard-home-sync.http.timeout=4
+      - kuma.adguard-home-sync.http.interval=300
+      - kuma.adguard-home-sync.http.max_retries=1
+      - kuma.adguard-home-sync.http.retry_interval=300
+      - kuma.adguard-home-sync.http.resend_interval=0
+      - kuma.adguard-home-sync.http.ignore_tls=false
+      - kuma.adguard-home-sync.http.expiry_notification=true
+      - kuma.adguard-home-sync.http.upside_down=false
+      - kuma.adguard-home-sync.http.authMethod=basic
+      - kuma.adguard-home-sync.http.basic_auth_user=smoochy
+      - kuma.adguard-home-sync.http.basic_auth_pass=${KUMA_BASIC_AUTH_PASS}
+      - 'kuma.adguard-home-sync.http.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=adguard-home
       - net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/linuxserver-ls-logo.png
       - net.unraid.docker.webui=${ADGUARD_HOME_SYNC_UNRAID_WEBGUI_URL}
@@ -82,11 +107,18 @@ services:
     restart: unless-stopped
 
     # Network config (macvlan/br0 mit fester IP)
+    # The smoonet address is static for the same reason traefik (.52) and
+    # uptime-kuma (.53) are: br0 isolation keeps bridge containers from
+    # reaching 192.0.2.3, so anything on smoonet that has to query this
+    # resolver - the Uptime Kuma DNS monitors above all - has to address it
+    # here. .54 sits below smoonet's dynamic IPAM range 172.18.128.0/17.
+    # AdGuard binds DNS on 0.0.0.0, so it answers on this interface too.
     networks:
       br0:
         ipv4_address: 192.0.2.3
         mac_address: ae:81:a9:a1:86:fc
-      smoonet: {}
+      smoonet:
+        ipv4_address: 172.18.0.54
     # Environment variables
     environment:
       - DNSSEC_ENABLE=0

@@ -72,7 +72,7 @@ services:
     # wget. /status is the API's own readiness endpoint, so a 200 proves the
     # notification gateway can accept a payload, not merely that a port is open.
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/status || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/status || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

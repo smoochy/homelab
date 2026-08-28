@@ -17,6 +17,19 @@ services:
       - TIMEOUT=300000
       - TOKEN=${BROWSERLESS_TOKEN}
       - TZ=Europe/Berlin
+    # /pressure reports whether the browser pool can still accept work, which is the
+    # readiness signal here. It is token-gated, so the probe reads the image's own
+    # $$TOKEN at runtime rather than carrying the secret in this file.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider \"http://127.0.0.1:3000/pressure?token=$$TOKEN\" || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: ghcr.io/browserless/chromium:v2.56.0@sha256:6f3149efabf5e04a44385974448c85264398db416bc63f884564316d0fcadc3e
     networks:
       smoonet:
@@ -26,13 +39,34 @@ services:
     shm_size: 2g
     ## Start Traefik Config
     # Komodo restore
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
     labels:
+      - kuma.browserless-v2.docker.name=changedetection-io - browserless-v2
+      - kuma.browserless-v2.docker.docker_container=browserless-v2
+      - kuma.browserless-v2.docker.docker_host=1
+      - kuma.browserless-v2.docker.interval=300
+      - kuma.browserless-v2.docker.max_retries=1
+      - kuma.browserless-v2.docker.retry_interval=300
+      - kuma.browserless-v2.docker.resend_interval=0
+      - 'kuma.browserless-v2.docker.notification_id_list={"1": true}'
       - com.smoochy.komodo.restore_stack=browserless-v2
       # Unraid metadata
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/browserless.png
       - net.unraid.docker.webui=${BROWSERLESS_V2_WEBUI_URL}
   changedetection-io:
     container_name: changedetection.io
+    # The image ships neither wget nor curl but does ship Python, so the probe is the
+    # fixed `urllib` line from CLAUDE.md with the URL substituted. The app exposes no
+    # health endpoint, so the probe falls back to `/`. `127.0.0.1` rather than
+    # `localhost`, so the probe cannot resolve ::1 in front of an IPv4-only listener.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/', timeout=5).status == 200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     depends_on:
       - browserless-v2
     deploy:

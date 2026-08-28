@@ -11,6 +11,19 @@ services:
       - HOST_OS=Unraid
       - OTEL_TRACES_EXPORTER=none
       - TZ=Europe/Berlin
+    # /v2/ is the registry API root, but it answers 401 behind the htpasswd realm, so
+    # the probe uses the unauthenticated root path instead. A 200 there means the
+    # registry process is serving.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: registry:3.1.1@sha256:1be55279f18a2fe1a74edf2664cac61c1bea305b7b4642dab412e7affdcb3e33
     networks:
       smoonet:
@@ -43,6 +56,24 @@ services:
       - traefik.docker.network=smoonet
       - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
       ## End Traefik Config
+      # AutoKuma: this container owns its Uptime Kuma monitor. Every field is written
+      # here because the stack runs without AUTOKUMA__DEFAULT_SETTINGS, so an omitted
+      # field falls back to AutoKuma's own default, not to the previous monitor's value.
+      # docker_host and notification_id_list carry Kuma's numeric ids on purpose: the
+      # name-based label variants (docker_host_name, notification_name_list) resolve
+      # only through AutoKuma's own store, so they cannot reference the hand-built
+      # DockerProxy host or the smooBot notification.
+      - kuma.registry.docker.name=registry - registry
+      - kuma.registry.docker.docker_container=registry
+      - kuma.registry.docker.docker_host=1
+      - kuma.registry.docker.interval=300
+      - kuma.registry.docker.max_retries=1
+      - kuma.registry.docker.retry_interval=300
+      - kuma.registry.docker.resend_interval=0
+      # no timeout label: AutoKuma 2.0.0's Docker monitor variant has no timeout field,
+      # so the label is dropped silently and Kuma stores 0. Harmless for this type -
+      # the docker check derives its own deadline from the interval either way.
+      - 'kuma.registry.docker.notification_id_list={"1": true}'
       # Komodo restore
       - com.smoochy.komodo.restore_stack=${SERVICE}
       # Unraid metadata
@@ -61,6 +92,18 @@ services:
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
       - TZ=Europe/Berlin
+    # The UI is the only surface this image exposes and it has no health endpoint, so
+    # the probe falls back to the root path.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     image: quiq/registry-ui:0.12.0@sha256:0d066cddfb87427d1907801cd5f955a5af4633ac3bae25273184dd80a96289be
     networks:
       smoonet:

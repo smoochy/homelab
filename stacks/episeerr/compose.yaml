@@ -1,7 +1,13 @@
 services:
   episeerr:
     container_name: episeerr
-    image: vansmak/episeerr:3.8.9@sha256:7b14478931249cc3ae3a14f7cc56354f6191dfc498a1079b0b8878c604267be7
+    image: vansmak/episeerr:3.9.0@sha256:af76729e423011d25421a63821c2769018ad2a109e63ebd8053370cb7fe7202a
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5002/api/series-stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
     restart: unless-stopped
 
     # Network

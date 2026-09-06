@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f2f2d92d8bbb52f8b4bca6bc8efc5ab99d24d137ec378683f5661761441a4637",
+  "claims": [
+    {
+      "id": "claim_ef8be3d262054b3aa54b4328ea78dafb",
+      "statement": "Mosquitto provides MQTT broker functionality for lightweight publish/subscribe messaging in the homelab, with health monitored by the stack-health poller due to lack of native HTTP health endpoints.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/mosquitto/README.md#L1-L4",
+          "version": "repo-lines-v1:sha256:2e2fbcb3fcfcaa0b0db1ef543672d65045dbea82c6d0b962371b521653f1f8ca:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTViNGE2YjNhZTJmNDExNTcxMGFlYWMwOTEwZDcyYzViNWRlY2Q1MWM2OWM2OTY2MzQ0ODhiMTcxZmFmMDQ2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjAsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNWYwZGJiZTE4YTkwNWMzOThlNTBiZTM2NWJlM2ViMjA0MDIzMWJlZWY3ZTdhY2I5YmRhZGVjNTE5MDM2MDcwNCJ9"
+        },
+        {
+          "resource": "repo://stacks/mosquitto/compose.yaml#L13-L16",
+          "version": "repo-lines-v1:sha256:7e0a9b9bffbf32d4c515804a2b61f020fcebe1ef10e1f25f76ca7022f9d6d2e6:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDQwOTk4MGVhYWM2MjNjNmE0ODU4NTEyYjRlYmVlNTEzOWEzNTViYTc3ZjZjMWVjNjk0MjZmMDVlZjVkYmRhYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMWY5OGQ1NTc3ZTU4Zjg1NzI5YjhiNGM2MjUzMWI1NGZlNTZhZmI1ZmFlZmU1NmZjODhjYTRiNjMzYTA4MGM0NSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYWQ2Y2U1OGZlNjJhM2FiNTFlZGFjODY1OGIzYWE0MWY4MDQ3YjQ3Y2VmNTNhZTNmOWRiMjg3ZjA3YjI5NjYwMyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2NhZmZhM2U2NDFlZmM5ZDg1YzY0YjZkN2MwMTVlMDUyNzU5MDE2MWVjZjEwYmIxNjI2M2QzODE4NThmYzQzZiJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

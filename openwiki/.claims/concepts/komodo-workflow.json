@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:52821a1538681d6225aef819025c9cfaf5e899155e66970fe6e6093261f6b4b5",
+  "claims": [
+    {
+      "id": "claim_694c16e307db47a09e4ae48dc2e71545",
+      "statement": "Komodo operates as a deployment control plane consisting of five core services: dockerproxy (read-write), dockerproxy-ro (read-only), mongo (database), core (UI/API), and periphery (deployment agent with SOPS/age).",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L9-L15",
+          "version": "repo-lines-v1:sha256:e0be7d51975274202534663da3490ea2c1ebd75590dcfbab79742ba724e4ab2f:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjY4MDNkMThiNDhkN2ZmMDM5YzFhZmM1OWU4MzgzNGMyMDlhMmQyODVlOTllZjkzN2NjZTg3MmFkNDczZTIzMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZjk5MzIyMThiMGNhMTQ2OGIwY2IwNDA1ZDkxZWU2NjU5NWQ1Nzc3NmU5ODVmY2IxYWI1ZmI2NzkxYTVkMWM3MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjhiYWE0YTc1NjAwODRhZWM1NGZhZTIxNzc3OGExZDA3OTM4ODUzYzU5MTBlZWM1MmU5NmY5YTYzOGRjNDI4MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjg3MDVjNGMwMzE0ODAwZmZlODM3YzBhZWM1NjdlYjliNGYxYjJmMzhjYzk1YjVkYmIzNmQ1YjUwNDNlZWJlOSJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L13-L288",
+          "version": "repo-lines-v1:sha256:e824fbe49a91c7ce430781be6b9052430807df1ad3cc717452ddba4be760cf03:eyJzZWxlY3RlZExpbmVDb3VudCI6Mjc2LCJmaXJzdFNlbGVjdGVkTGluZUhhc2giOiI0MWQyYjljYjE0MDhjOTM3NzU3NDdjODlhMzcyNjkxODc3ZDJkMjdhOWY3YTkzNjRjNThjNmUxNzk1NzQzMzhiIiwibGFzdFNlbGVjdGVkTGluZUhhc2giOiIxMjEyNjM3OTBmZmIzOTNiMWEzNGMxN2I1MzVjZmUwOTgyMjRkMTI4N2FhYTE2ZDVjYjZmNjE5ZWVhZjUwZmJlIiwicHJlY2VkaW5nQ29udGV4dExpbmVDb3VudCI6MywicHJlY2VkaW5nQ29udGV4dEhhc2giOiJmNzRmZGYwNzE0YTYyMDJlMmQ3YjdjNGUyZGNkYWQ5YWRhOWY0OTJmMmU4MGI0MGRlYzZkNzEzY2I0NTZjNTg1IiwiZm9sbG93aW5nQ29udGV4dExpbmVDb3VudCI6MywiZm9sbG93aW5nQ29udGV4dEhhc2giOiJlYjFhZjM3NzIxY2FmZjcyYTFmYjIxMDJmMzE4YjhjY2JhYjdiYThhZGQ0ODI1MmM0ODQ5NzhkZDFmODFkNzdkIn0"
+        }
+      ]
+    },
+    {
+      "id": "claim_a5098505418a48b0bd60873c0cb7493a",
+      "statement": "The dockerproxy service requires specific environment variables including ALLOW_ARCHIVE=1 for Compose inline configs, ALLOW_LOGS=1 for log streaming, ALLOW_START/STOP/RESTART=1 for container lifecycle, ALLOW_BUILD=1 and ALLOW_POST=1 for image operations, and ALLOW_CONTAINERS=1, ALLOW_IMAGES=1, ALLOW_NETWORKS=1, ALLOW_VOLUMES=1 for resource management.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L50-L52",
+          "version": "repo-lines-v1:sha256:bf15df2144235415d93bddcd5be16e5260a63c9021373f8115147c42669100cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ5YjIxNTUxZTg5MWM0M2FhZWQ2NjVhNjJlNWE3ZTJkZTVjZDNkYTc0NDE5YjlhNWVjMmViMDlmYzhkZTkyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQxZjcwNWE2OTUzZTY2MWRlNzlhNzk0Y2NjNzVjNTU3NmRkOTUyNjFmZmUyZjJmYjdmOGZiZTBkZDZmODVkMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmMwOWJlZDE2YzI0ODZkNDI3MGRkNDZmYjAxM2M0NmFjYTI2YmYwOGVmZGUzMzBkZTNkNWMwOWUwNzY1OGI5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjRjMWYzMzUyZjA5NWVlNGJhZTY4OGZlYmE1NzIxYmM4ZTEzMzQ5Mzc4YTAyODRiODIxMjljNThkNjkzZDVlYSJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L17-L57",
+          "version": "repo-lines-v1:sha256:2a4b5da35ad71ef7670abcd878ef3cf5088bce6f94c2c7106f70da6908a7037d:eyJzZWxlY3RlZExpbmVDb3VudCI6NDEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyNzQ2MzM0ZmRiZDY1MTMyMzlmMTMyNmRiOGI2MTI3NTdiNWIzMmMwODA4YjUwODFhOTkzN2Y2NTMzYjhkYjkiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjYyMGY3MGQ3YTBjN2Q4NjIwNTgwNmQ2MTJhNTc0NTcyY2U4ZmEwMmNiZDVmZTZkN2FhMTMxODA0OTllMDc0N2UiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjIxM2YzMmI4NzViMmNkOTQ3YmQwY2UwMzU4ZmI1MzNkMWY2OTdmOTkwMmUyNGZjZTBlYjlkMGY5YzRiMDY5MzciLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjYxMmUwNmMyNzc2ZjdmZDdjMTcxNTA5ZTVmMmZkMjg2M2Q4YWEzMWU5MzQzODMxZWM5MmQwYmVkMzI3NGNlZjYifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_f5a13d7471804e32a93856f7f52b79f7",
+      "statement": "The mongo service persists Komodo's operational state including stack configurations and deployment history, using named volumes for data durability and running with constrained memory via --wiredTigerCacheSizeGB 0.25.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L50-L52",
+          "version": "repo-lines-v1:sha256:bf15df2144235415d93bddcd5be16e5260a63c9021373f8115147c42669100cb:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiZjQ5YjIxNTUxZTg5MWM0M2FhZWQ2NjVhNjJlNWE3ZTJkZTVjZDNkYTc0NDE5YjlhNWVjMmViMDlmYzhkZTkyNiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQxZjcwNWE2OTUzZTY2MWRlNzlhNzk0Y2NjNzVjNTU3NmRkOTUyNjFmZmUyZjJmYjdmOGZiZTBkZDZmODVkMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmMwOWJlZDE2YzI0ODZkNDI3MGRkNDZmYjAxM2M0NmFjYTI2YmYwOGVmZGUzMzBkZTNkNWMwOWUwNzY1OGI5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjRjMWYzMzUyZjA5NWVlNGJhZTY4OGZlYmE1NzIxYmM4ZTEzMzQ5Mzc4YTAyODRiODIxMjljNThkNjkzZDVlYSJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L108-L137",
+          "version": "repo-lines-v1:sha256:d24dc23c5a74a4938ff831bc2c13968ecacc07bb31d4fea9b043cb8f362799bf:eyJzZWxlY3RlZExpbmVDb3VudCI6MzAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEzMDljMWRlZDcwOGQ3Nzk0ZDZiNmE2MjVmZGRjMjg3OGVlMzg0ODBkZmMyOWFhZTVhYmMyZjM1MWNkYjJjODEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyMTI2Mzc5MGZmYjM5M2IxYTM0YzE3YjUzNWNmZTA5ODIyNGQxMjg3YWFhMTZkNWNiNmY2MTllZWFmNTBmYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkMDU1ZmM1NzM0MjY1NTU4M2YyYWIzMGExMjIyNTgzNGZmODk2YzhiZDk1YzNmNzBkMWE5ZWUyNmY2Y2RmNjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImVmNzFkNzE4YzdmZjk5ZmQ5YjY5NzI4NDcwYTNiNGRiZTY1NmViNjk2ZWU4MDQ2NWExMDFmYzEzNjgyNjE3YjAifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_2cc483d7232a47ee871b6aab0f0df82b",
+      "statement": "The core service provides the user interface and API, connects to MongoDB for state storage, interacts with Docker via dockerproxy (DOCKER_HOST=tcp://dockerproxy:2375), and communicates with periphery through shared filesystem keys in /config/keys.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L139-L216",
+          "version": "repo-lines-v1:sha256:41a49b88c24c6c3cabc747b5dcbbc96c489be4f89c9b4231ce0774ea49037b3b:eyJzZWxlY3RlZExpbmVDb3VudCI6NzgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImMxMWVhZGZkMjJkNDg3ODFhZGY0NDUzNTdkOTY2ZDk1YWUwNWI5NDQ1MDE3ZjkyNzc0Y2Q2MTEzZGNmNDJiYWUiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIwZWNhYTUxNTljNTJmNjY2OGMwZTNmNjM2ZGFjMWU5YzdkNzY4NTAzYzc2NjA3ZDBkNWIzY2ViYjUyZjYyMjIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjVkMDU1ZmM1NzM0MjY1NTU4M2YyYWIzMGExMjIyNTgzNGZmODk2YzhiZDk1YzNmNzBkMWE5ZWUyNmY2Y2RmNjUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImM3MDk3NzNlYTk3NGEwMDRmMzc1YzI1ODBlYzlkY2RhODEwZmFhMWVhOWFkNzQyN2ZhMWQyNjJlOTQ4ODRhODgifQ"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L199-L202",
+          "version": "repo-lines-v1:sha256:518a27a5ca95b3099cf47c32c4aea9ee7e2d4a9319e9738bb6e170c42ee40770:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzYyYjhlODNlYTVmNDVkZjU1Yjc3MWIzMTlhMGVhMzc1YTEzZmFhMWE1ZmQ5MWZmNjBlOTdmOWM5ODY4ZWU0ZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmVkZjQ5OTQ5Nzg3NzA5MTUwMzA2Yzc4NzZiYTM2ZjFhYWNkZjBjYWQ5ZDFjMTRiZTVkYjMyMTk5MGZlNGY1MSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZWE4YmNjYTkyZDMxZjNlYjNiMjMwMTYzM2VmOTBjNGRhM2I4MjBiMmMwMzk3ZDE2Y2YyOGI0OTYxZWQyMTNhMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGE2OTliNTUzM2Y5ZWM0Mzg0NDNjMTFlNjUxYWUwMGE0OTQ4ZDEwZjk0MWUxMzNkNzkxYWFlNDU3ODg4OGJiOCJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L210-L216",
+          "version": "repo-lines-v1:sha256:0e412389b15aab71f109368975b705c8b6a4a4b9af40d3befcd27d752866a9ed:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTIzNmYyZmViOGI4NTllNmI3N2RjMTQzNDFhMDk4ZDIyN2E4ZjBiZDhmYzUyNWNkMjliYzY0NTcyZTA3ZWRiZCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMjBlY2FhNTE1OWM1MmY2NjY4YzBlM2Y2MzZkYWMxZTljN2Q3Njg1MDNjNzY2MDdkMGQ1YjNjZWJiNTJmNjIyMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDMxYWIyZTRlNGVlZjAyZjA1ZTBmNmVmOTJhZjNjYjE5NWMzMGQ2ODc4MzcxZTM2MDU2MTg3OTM5NjZkYzRkNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYzcwOTc3M2VhOTc0YTAwNGYzNzVjMjU4MGVjOWRjZGE4MTBmYWExZWE5YWQ3NDI3ZmExZDI2MmU5NDg4NGE4OCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6b8462801790498e9c25c95417652114",
+      "statement": "The periphery service executes deployments using a custom image containing SOPS and age, decrypts secrets in-memory using age private keys from /config/keys, clones repositories to /etc/komodo/repos, builds stacks to /etc/komodo/builds, and deploys via the docker proxy.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L42-L42",
+          "version": "repo-lines-v1:sha256:b0e957072ce517f1eefa1b74ae18a8bd14e5024b180b52ea18a8e355671c6d24:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjBlOTU3MDcyY2U1MTdmMWVlZmExYjc0YWUxOGE4YmQxNGU1MDI0YjE4MGI1MmVhMThhOGUzNTU2NzFjNmQyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYjBlOTU3MDcyY2U1MTdmMWVlZmExYjc0YWUxOGE4YmQxNGU1MDI0YjE4MGI1MmVhMThhOGUzNTU2NzFjNmQyNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjY3MDdlZDMzYWVlNTk2NGU3ZDY0NzgzN2NiNzFhZDMzYTllMThmN2Y0NDVmNzkwNzY5NWFiNDU3MzRlNzU1ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTE2ZTFjYzdkMmM2OGYxY2Y1MzcyNGRhMDkwNDcwMGM0YzAwM2I5OWJiMmM2YjEyOTE1Yzg5NTdhODhiZDc4ZSJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/README.md#L52-L52",
+          "version": "repo-lines-v1:sha256:bd1f705a6953e661de79a794ccc75c5576dd95261ffe2f2fb7f8fbe0dd6f85d0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQxZjcwNWE2OTUzZTY2MWRlNzlhNzk0Y2NjNzVjNTU3NmRkOTUyNjFmZmUyZjJmYjdmOGZiZTBkZDZmODVkMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQxZjcwNWE2OTUzZTY2MWRlNzlhNzk0Y2NjNzVjNTU3NmRkOTUyNjFmZmUyZjJmYjdmOGZiZTBkZDZmODVkMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDVmYjU5MWVkYmYyMGFhZDFkYjliYWQ2NzI4ZTRlOTIxZDlhMWY4MTRiOWUwMzkyZWU5Nzk4ZmNlYWYzNGUzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjRjMWYzMzUyZjA5NWVlNGJhZTY4OGZlYmE1NzIxYmM4ZTEzMzQ5Mzc4YTAyODRiODIxMjljNThkNjkzZDVlYSJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L224-L288",
+          "version": "repo-lines-v1:sha256:11d42e565bd06dbf1874e66cf6ffcc8afca245a2cb777d0fdb7b3a7e5624a5fe:eyJzZWxlY3RlZExpbmVDb3VudCI6NjUsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6Ijc5NGVjODM4ZjdlMDJiNWIyNjYyOWZlZmQwN2Y4ODZjZWVkZTU3NzkyMmE1OTdhYzhjODEyMzU1NGFmMTUxMDAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjEyMTI2Mzc5MGZmYjM5M2IxYTM0YzE3YjUzNWNmZTA5ODIyNGQxMjg3YWFhMTZkNWNiNmY2MTllZWFmNTBmYmUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI5YmExY2IxZTFjYTUyNTAwZjcxZjM5NWNhNzE1Yjc3ZjdlODZjOTMyNTQ5N2I0M2JhZDA4ODljNjhjMTE3NWIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImViMWFmMzc3MjFjYWZmNzJhMWZiMjEwMmYzMThiOGNjYmFiN2JhOGFkZDQ4MjUyYzQ4NDk3OGRkMWY4MWQ3N2QifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8a26a8c3d59a45cebfa92ac60d3d2012",
+      "statement": "Komodo's deployment workflow involves: 1) Core storing stack configuration in MongoDB, 2) Triggering Periphery to begin deployment, 3) Periphery pulling repository commits, 4) Decrypting SOPS-encrypted secrets using age keys, 5) Rendering stack files with decrypted secrets, 6) Deploying via Docker proxy, and 7) Reporting status back to Core.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L46-L47",
+          "version": "repo-lines-v1:sha256:fd8cf9a02ba6153f25055a7445f93d1beace660e973ebb630f9cb2ba11002899:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTZlNWJhMjYxODgxZWViYmFiZmY1NzcwZTU4NjUyNWUwY2JlZDQ2OTMxZGQ0Mzc1ZGFkOWUxZDk0ZGRkZTAyMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTE2ZTFjYzdkMmM2OGYxY2Y1MzcyNGRhMDkwNDcwMGM0YzAwM2I5OWJiMmM2YjEyOTE1Yzg5NTdhODhiZDc4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGJhNTZmMWVkNmQxODI0YzI3Mjk1NGE5ZjM3YTA1YTU5YWMzYmM0M2I4YmM3MWJjODg3OTQ1NDZjYjRhMzkyNyJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L251-L253",
+          "version": "repo-lines-v1:sha256:c9ce89efe8c6ac751afedbc01c129800f41d81ba9e44b6be22d91196478de754:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNTk4NzYxMzM0NDZjMmUyMzZjMjAyZWFlMDMwNjg4ZjU5ZjliMTQ3YjJiODM3MzI4NjYxMjFjNjNjN2NmNjkyNCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZGM3Y2U5ZTdiODg0MzAxNGU4YzQ5MDkwODAzMDFkZjY1NzExN2EwZDNmYjlmNzU5YzE4Y2MyZDQ4NGU1MGFlNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGE3MDI1ODVmMWM5ZTVjODhiNDljNGQyNGMyYmFhYTg1YzQ5OGY3Njc3MjNlZTc0MTI4MzA1MmY0MjZlNTRjZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTE0MGIzOTc4NzUzNGM2MTkwZjgxYTY1MWQ1ZDUwN2IwOGYzZmVkYTMwMjE4ODE1NzQyNGYwYmRkOTVmYzU2NiJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L263-L265",
+          "version": "repo-lines-v1:sha256:bde84f0eb941faa181a78c00710a7b66c7d67fe6bbbe4fbd3f7fce47f5d0afd2:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMDIwNjM3NWQ4NjNlNmRlZWYxODQ5OWRlYzE5Njg3YTY2M2E1ZGNmZWI0MTgyMzBmNTRjNDA0YTBkZjZhNTUxOSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNzQ4MWU3OTU1MDg1MzdlNmNjZTljYzUyOThiNWI3ZDRkM2I5YmFhMjAyOGI0MzY0ZWUyNjM5ZTQzNTAzZjVkYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNmZhZGRjMGM0NTc0MzU4NjgyMDg0NDZmMWFlYmYwMDliZTlhOWZlNWRiYzM0NTI2NjM1ZjQ3MjMxMDhjYWFmNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZjliNzVlMDBmNDZjZjBmZGMxOGIzZWE0N2NiNmMzMTkxMmJjMDFiOGNhNzE4MjVmYzcyZTYxZjE5MDY4NzNmNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_57110f1387084395a1540bc7806bab18",
+      "statement": "Secrets management in Komodo uses SOPS for encryption and age for decryption, with private keys stored on the host and mounted into containers; Periphery decrypts secrets only in memory during deployment and never writes plaintext secrets to disk.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L46-L47",
+          "version": "repo-lines-v1:sha256:fd8cf9a02ba6153f25055a7445f93d1beace660e973ebb630f9cb2ba11002899:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTZlNWJhMjYxODgxZWViYmFiZmY1NzcwZTU4NjUyNWUwY2JlZDQ2OTMxZGQ0Mzc1ZGFkOWUxZDk0ZGRkZTAyMiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNTE2ZTFjYzdkMmM2OGYxY2Y1MzcyNGRhMDkwNDcwMGM0YzAwM2I5OWJiMmM2YjEyOTE1Yzg5NTdhODhiZDc4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZGJhNTZmMWVkNmQxODI0YzI3Mjk1NGE5ZjM3YTA1YTU5YWMzYmM0M2I4YmM3MWJjODg3OTQ1NDZjYjRhMzkyNyJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/README.md#L52-L52",
+          "version": "repo-lines-v1:sha256:bd1f705a6953e661de79a794ccc75c5576dd95261ffe2f2fb7f8fbe0dd6f85d0:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQxZjcwNWE2OTUzZTY2MWRlNzlhNzk0Y2NjNzVjNTU3NmRkOTUyNjFmZmUyZjJmYjdmOGZiZTBkZDZmODVkMCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmQxZjcwNWE2OTUzZTY2MWRlNzlhNzk0Y2NjNzVjNTU3NmRkOTUyNjFmZmUyZjJmYjdmOGZiZTBkZDZmODVkMCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDVmYjU5MWVkYmYyMGFhZDFkYjliYWQ2NzI4ZTRlOTIxZDlhMWY4MTRiOWUwMzkyZWU5Nzk4ZmNlYWYzNGUzOSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNjRjMWYzMzUyZjA5NWVlNGJhZTY4OGZlYmE1NzIxYmM4ZTEzMzQ5Mzc4YTAyODRiODIxMjljNThkNjkzZDVlYSJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L208-L211",
+          "version": "repo-lines-v1:sha256:cddcdead647286c1f768685bdf9dd013502662d38a7b5006d9afc42c24c55a4d:eyJzZWxlY3RlZExpbmVDb3VudCI6NCwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjYyNDcwZmQ0MjRlMjE5YjAyZjVjNDFkMzdmZjA0MTg5YWYxZTZkYjU1YzE5MjAwMjY0Yjc4NTgwN2QxNDkwYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzc1NzkyZjdmYWVhOGNmYTNjZjJiMTNhNDlmNGNiMmQ3NjI2MzBhZDZkMDIwZDU2ZjYyZDE2OGM3ZGYwMzQ3YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYjI3MmYyNDFlYzc3YmM5MTU0NWIzY2QxZDRmOTlhOTI4MTg1NjdjZDY5MTE5OWU3OTY0OWMxY2E2YjI1Y2E5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZDhlMTgzMDgwMWMyNTA4YjkwZWY1NjM0ZmUxYjQ0M2EwNjA0MDM4MmRjZjZmMjBjOWQxN2JlYjliYTBlNGRiMCJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L256-L256",
+          "version": "repo-lines-v1:sha256:375792f7faea8cfa3cf2b13a49f4cb2d762630ad6d020d56f62d168c7df0347c:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzc1NzkyZjdmYWVhOGNmYTNjZjJiMTNhNDlmNGNiMmQ3NjI2MzBhZDZkMDIwZDU2ZjYyZDE2OGM3ZGYwMzQ3YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzc1NzkyZjdmYWVhOGNmYTNjZjJiMTNhNDlmNGNiMmQ3NjI2MzBhZDZkMDIwZDU2ZjYyZDE2OGM3ZGYwMzQ3YyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTIwYWNiYjZiMWYzNTNlNDI2ZDU1NzAwMzVmOTQyNjAyYzk2ZTExMDgxNDllZTRmYWQxMjVhNjMyNWNiMzk2NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNGQ5NDRiMGNlYTYxY2ExYmM2MWU3NmYyNzA1MjhkNTA3NjhjNzU1ZTViMjA5MDY5NDJkZDU5NzdiNmZjYjViYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_783b62678a464926ac6ad52d51b6c238",
+      "statement": "All Komodo services communicate over a user-defined smoonet bridge network (172.18.128.0/17) that Komodo creates automatically on first deployment, enabling inter-service communication while avoiding Docker's default logging overrides.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md#L51-L51",
+          "version": "repo-lines-v1:sha256:1875771bafdd4557a3cf35fcda327924b398f59283a8f006403ce69f2613f664:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTg3NTc3MWJhZmRkNDU1N2EzY2YzNWZjZGEzMjc5MjRiMzk4ZjU5MjgzYThmMDA2NDAzY2U2OWYyNjEzZjY2NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTg3NTc3MWJhZmRkNDU1N2EzY2YzNWZjZGEzMjc5MjRiMzk4ZjU5MjgzYThmMDA2NDAzY2U2OWYyNjEzZjY2NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGJhNTZmMWVkNmQxODI0YzI3Mjk1NGE5ZjM3YTA1YTU5YWMzYmM0M2I4YmM3MWJjODg3OTQ1NDZjYjRhMzkyNyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjIsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTI1MDhmOTY1YzE2YmQzYzA5YzY1ZjQyMjZkYWY5Yjk0YmI1NDQ3NDkxNDVhNTlkZGE2YTMwOTc2YzlhZDYzYyJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L105-L106",
+          "version": "repo-lines-v1:sha256:5f0019ed1807e86042473b6c4a1bd868093b1cb11c5e5aab29ffeb551d5190b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDkwNTc5NDYxM2Q5MTc4MjM3MmJlZTRjZTBjY2I5Nzc0MzIxOTVmMjY0ZjE1MmJlNzFkYjI1ZTBmMDRhNjQ4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTIxMjYzNzkwZmZiMzkzYjFhMzRjMTdiNTM1Y2ZlMDk4MjI0ZDEyODdhYWExNmQ1Y2I2ZjYxOWVlYWY1MGZiZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjUyYzJkOGMwNDc5NDIyNzFhMWFmMmZhYjIwZWUxMWQ4Y2UyNTk2YWE4ZTRmNDc5ZmUxNTMzZjhjOGQ2ODNiNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTFjNzFhZmJmZGRkOWU0YzcwYzA2ODNjYzRiYzVmYTg2MzA3ZWUwMTY2NmJkOTUzZDdhNjIyYTE2NWM1NTE4MyJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L179-L180",
+          "version": "repo-lines-v1:sha256:5f0019ed1807e86042473b6c4a1bd868093b1cb11c5e5aab29ffeb551d5190b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDkwNTc5NDYxM2Q5MTc4MjM3MmJlZTRjZTBjY2I5Nzc0MzIxOTVmMjY0ZjE1MmJlNzFkYjI1ZTBmMDRhNjQ4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTIxMjYzNzkwZmZiMzkzYjFhMzRjMTdiNTM1Y2ZlMDk4MjI0ZDEyODdhYWExNmQ1Y2I2ZjYxOWVlYWY1MGZiZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOTZmYjY1OTZhNGE3NDZhZTQ2NmM0YjUxZDY2MDhjMjRjZDUwMWQ1NmM2NjQ2MzdlMzUzMDdlZGE2ZWFkYzdlMCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOGQ1ZDU0YmQwZTg5ZjAwZjZmZTc2YjhlMGJjZjI1MTJkNzdmZWY1MTU0N2Q4OGViZTYwNjYwNzYzMmM0YWM5OCJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L287-L288",
+          "version": "repo-lines-v1:sha256:5f0019ed1807e86042473b6c4a1bd868093b1cb11c5e5aab29ffeb551d5190b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDkwNTc5NDYxM2Q5MTc4MjM3MmJlZTRjZTBjY2I5Nzc0MzIxOTVmMjY0ZjE1MmJlNzFkYjI1ZTBmMDRhNjQ4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTIxMjYzNzkwZmZiMzkzYjFhMzRjMTdiNTM1Y2ZlMDk4MjI0ZDEyODdhYWExNmQ1Y2I2ZjYxOWVlYWY1MGZiZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYzBlNmM5NDE4NmVjZWUxYmRlNjc1ZDE0M2Y1MTNjNzU3NzQ4Y2FkZGUyYzRjNTg2ODM5NTk2MGU2ZGE0YzNmZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZWIxYWYzNzcyMWNhZmY3MmExZmIyMTAyZjMxOGI4Y2NiYWI3YmE4YWRkNDgyNTJjNDg0OTc4ZGQxZjgxZDc3ZCJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L298-L302",
+          "version": "repo-lines-v1:sha256:1886f75077d3e7c71ed19cd7b25c6298498fe96b9610662d8d0c5b51c4528ff0:eyJzZWxlY3RlZExpbmVDb3VudCI6NSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMGUxODhlMDVhNzBjYzkwZDdjZTg4ZjMwYzdlYWI0N2NmMzgyMWE1MDljZmQ0NDU0NmU3ZmYyN2Y5YWIwYTg1YiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTliMDk5NjA1NWJmMTQ0YWNlYTZlNTdmZDg3MzJlNjZiOGU1NWE4NDEyYjAzMjY1Yzg1ZWZkOTkwOWRlOTgxYiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjY2ZDVlNmRmOTVhNmU0YTlmNWUzYThhZWJlY2YwNWZlMzZiN2Y3MTUyOTMzZTFiNTYwZDE5NGVlMDNmZjM5MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiODE4YTE2NWFiYjk4ODUxZWUxNzZkNzA2ZDk3NWU0MDUzZGU2MTlhN2RmZDZkYjBlMjk4OTUzZWY3YzIzZmNhMiJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L69-L70",
+          "version": "repo-lines-v1:sha256:5f0019ed1807e86042473b6c4a1bd868093b1cb11c5e5aab29ffeb551d5190b7:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDkwNTc5NDYxM2Q5MTc4MjM3MmJlZTRjZTBjY2I5Nzc0MzIxOTVmMjY0ZjE1MmJlNzFkYjI1ZTBmMDRhNjQ4ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMTIxMjYzNzkwZmZiMzkzYjFhMzRjMTdiNTM1Y2ZlMDk4MjI0ZDEyODdhYWExNmQ1Y2I2ZjYxOWVlYWY1MGZiZSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjUyYzJkOGMwNDc5NDIyNzFhMWFmMmZhYjIwZWUxMWQ4Y2UyNTk2YWE4ZTRmNDc5ZmUxNTMzZjhjOGQ2ODNiNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiN2RlNTQzNGZjZGI3Y2QwYWIyM2MyMGI0NWJjNWFmNGQ4NzIyNjk0OTI1MGY4NGFmYTU3MWY1Y2RmODA0MWUzNiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b7a785840e34056b6a8049b43fa373a",
+      "statement": "The komodo.skip=true label is applied to all Komodo services (dockerproxy, dockerproxy-ro, mongo, core, periphery) to prevent Komodo's internal StopAllContainers action from interfering with its own operation.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L112-L112",
+          "version": "repo-lines-v1:sha256:333c37bd1ca371207afab077857b9afcb8efb69522ea9a5fa150dd6bd93eebfa:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMzYzM3YmQxY2EzNzEyMDdhZmFiMDc3ODU3YjlhZmNiOGVmYjY5NTIyZWE5YTVmYTE1MGRkNmJkOTNlZWJmYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzMzYzM3YmQxY2EzNzEyMDdhZmFiMDc3ODU3YjlhZmNiOGVmYjY5NTIyZWE5YTVmYTE1MGRkNmJkOTNlZWJmYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiODhjY2Q3ZjMzN2Y1NGU4YmNjNDE5NDJiYzc0MjcxMWVhMDUwMGJkMTg2YmIwMzE4NzljNzE1NWMxNWM0MTI3MiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDQyMmVjOTY4NzlkYWI5ZjViYzRhYjdhYWMxZjQ1YjQwODA5YjgyYjg0Y2QxZDUyYWJkMWMxNTIyZGJiN2Y0NiJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L144-L145",
+          "version": "repo-lines-v1:sha256:351573c8906d17337325cfe2b9808ca30c95e736a1ee1fd1a4f2cfdda8ebdc50:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzUwNWVmMzA2N2JjMjM4ZWYzZWFhYWFhOTRkZjAyMDUyYmU5ZmFjMWEyODE5Yjk3Mjg5MWY1NmVkNzU5Y2RiYiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOTA4MWEzNmU0OWZmZDdlM2RjODFmZWU0NDYyMTc3YTFlZTc5NGZkYjg1MGQ0Y2I0ZjUzMmRhOWMyYjAwNzk1ZCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNDEyZWQyNGU1M2Q3OGU4NzNmZDk1ZWIxMjkwYWFjZWQzNGQ3OWQ2NWMxMDYyY2VkM2ZjZDk2YTA1NjliNjY3ZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTllZWIyNzM1MGZhNzhkYjBiYjU3NzFiMWUxNDRjMzE5ODA5YjViMzZiNWM0ODYxOWNjMzU5MzczOGM5YWIzOCJ9"
+        },
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L227-L227",
+          "version": "repo-lines-v1:sha256:38a24cf692bc2c508f6d89767cf2c3dac352f5cb235cf05debb3626e5738572a:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhhMjRjZjY5MmJjMmM1MDhmNmQ4OTc2N2NmMmMzZGFjMzUyZjVjYjIzNWNmMDVkZWJiMzYyNmU1NzM4NTcyYSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhhMjRjZjY5MmJjMmM1MDhmNmQ4OTc2N2NmMmMzZGFjMzUyZjVjYjIzNWNmMDVkZWJiMzYyNmU1NzM4NTcyYSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNGJhOTE4N2RjNDlhMmRlMzBmOGVjYTA3NjhkYjNkMGFlODVkNzQ2NjkzYTNiZThlYjRlMzc5NjU1YjZhYzhhYSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNTMwNTI4ZWQ0YThjNmI2NzVkNmVlYjEzMzEwNTU1ZGVlZmEwMzFjOTE3MzQ0NmIwMjcyYjUwZGMwMzhjMGY5ZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_7bb442f81cbf4a14b7ef937c352eac0c",
+      "statement": "Periphery requires access to host directories for stack-specific script execution, mounting paths such as /mnt/user/appdata/qbittorrent/scripts and /mnt/user/appdata/traefik/scripts to enable automation workflows within stacks.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/compose.yaml#L273-L286",
+          "version": "repo-lines-v1:sha256:94aca895ccd292e01f8033fbf4f3b65d3b3d1ccc331b05c75b849ec888c15736:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImQ2MDcxZWU2ODEzZWVkNjRhZDIxYzQ0MDBhMGE5ZWJiMmNjNTM4NTBlMzI1ZTExNDAyYjFiNjExNTcxMWFjNDIiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6ImY4ZWJlNGRmYzA0MWE2MzUzZGE3YzNiZmQyYzBiODBhOTg0N2E3Yjc4MDgwODdhMWJiZjk4YmI4MDkzM2FhNTQiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImMyNjU4NjJkOGYxYzI2NDdmM2NkNDliY2ZlOGM4ZTY4MTViN2MzNzE3OWNhNGU2YWU4NWVmMWQ2OTVhYWJlNjYiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjVkMDU1ZmM1NzM0MjY1NTU4M2YyYWIzMGExMjIyNTgzNGZmODk2YzhiZDk1YzNmNzBkMWE5ZWUyNmY2Y2RmNjUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

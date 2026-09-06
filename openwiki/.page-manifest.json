@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "pages": {
+    "/openwiki/architecture/edge-and-networking.md": {
+      "pageVersion": "sha256:bfdb598c4437e168863ad6718db94a19bfa9aa8e59b4649af22208ce1f236e3e",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/architecture/media.md": {
+      "pageVersion": "sha256:f8e54191676c2dc95e816e502c853b2019a3cfa818981c724a24718777a2066f",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/architecture/overview.md": {
+      "pageVersion": "sha256:642df87ebf880c022755087007cfaa239fd9adb540d512d63513df75f02579cc",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/architecture/utility-and-infrastructure.md": {
+      "pageVersion": "sha256:f2f2d92d8bbb52f8b4bca6bc8efc5ab99d24d137ec378683f5661761441a4637",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/concepts/komodo-workflow.md": {
+      "pageVersion": "sha256:52821a1538681d6225aef819025c9cfaf5e899155e66970fe6e6093261f6b4b5",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/integrations/authentik-sso.md": {
+      "pageVersion": "sha256:2d1f75d1e76e2d40d7cf878bbe402d398bbe83d0eb806977c3c885e4b243600b",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/integrations/traefik-as-ingress.md": {
+      "pageVersion": "sha256:101a99f15ea4c8c4d3deb59e927bde0c69460401beef42910d82a00723968ab5",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/operations/backups.md": {
+      "pageVersion": "sha256:cb9293b1eb8f135f22964443faafa774a474eec7212d867ba37f02d591312f7d",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/quickstart.md": {
+      "pageVersion": "sha256:d8a4c5ca4f8345ec8b65adfac5e720186f259ae125508529a0a636e5ffb34f2e",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/workflows/add-traefik-route.md": {
+      "pageVersion": "sha256:85c47b85628605ee6901a896ca25bc4ee21ad589c88f2cecd42d26128d20a1c8",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    },
+    "/openwiki/workflows/update-secrets.md": {
+      "pageVersion": "sha256:7cc59854f7f2790ab3e695333674cbe3549af00fdc584b6ea1e9c6428bb80ee4",
+      "completedBy": "openwiki/0.5.0",
+      "completedRunId": "472efefb-03ef-4600-a11c-64220c2e266d",
+      "gitHead": "14a67c7be0c3242692c89eb9364c7783e5408e76",
+      "sourceFingerprint": "sha256:f5d794bd06eb41bb6075f9b0126b8a7fc7d48827054448b762dc999023edbf11"
+    }
+  }
+}

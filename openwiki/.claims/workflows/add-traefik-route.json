@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:85c47b85628605ee6901a896ca25bc4ee21ad589c88f2cecd42d26128d20a1c8",
+  "claims": [
+    {
+      "id": "claim_78410998bc5346938d5c5ea4d2223517",
+      "statement": "The Traefik instance in this homelab setup uses the file provider to load static configuration from YAML files in the `stacks/traefik/rules/` directory, merging all files in that directory.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md",
+          "version": "repo-file-v1:sha256:4e250cff4832d232c450d31e10c75c812f5b89b8082f69a58a8e94d1b6138524"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

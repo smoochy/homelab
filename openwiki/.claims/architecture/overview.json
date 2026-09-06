@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:642df87ebf880c022755087007cfaa239fd9adb540d512d63513df75f02579cc",
+  "claims": [
+    {
+      "id": "claim_1e73285a3f67488aa9480ad9ef862052",
+      "statement": "The homelab architecture includes an edge and networking domain that provides ingress, DNS filtering, and security monitoring.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:419c1f86518e8bdf89429b17126cb970f12cba272232396d17a9d5c661453271"
+        }
+      ]
+    },
+    {
+      "id": "claim_e686e186f0b749dab5078cdbd512292c",
+      "statement": "The homelab architecture includes an identity and access domain that manages authentication, authorization, deployment workflows, and service dashboards.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:419c1f86518e8bdf89429b17126cb970f12cba272232396d17a9d5c661453271"
+        },
+        {
+          "resource": "repo://stacks/komodo/README.md",
+          "version": "repo-file-v1:sha256:3f50baa5440a409ba44bacc599af1ad3c7e1259aef5ffe1ab89706ca12e96356"
+        }
+      ]
+    },
+    {
+      "id": "claim_63cae3e75b904797bb11e1f1a590621c",
+      "statement": "The homelab architecture includes a media domain that automates media acquisition, organization, and streaming.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:419c1f86518e8bdf89429b17126cb970f12cba272232396d17a9d5c661453271"
+        }
+      ]
+    },
+    {
+      "id": "claim_f5454027c4e540d7834afa7186e0e9b5",
+      "statement": "The homelab architecture includes a utility and infrastructure domain that provides foundational services for monitoring, automation, communication, and data persistence.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:419c1f86518e8bdf89429b17126cb970f12cba272232396d17a9d5c661453271"
+        }
+      ]
+    },
+    {
+      "id": "claim_91897573d9ea44649655d0ad758b42f5",
+      "statement": "Traefik serves as the core ingress, routing, and edge security stack for the homelab network.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md",
+          "version": "repo-file-v1:sha256:4e250cff4832d232c450d31e10c75c812f5b89b8082f69a58a8e94d1b6138524"
+        }
+      ]
+    },
+    {
+      "id": "claim_44fd5c0f15094902b8871e1794b3b803",
+      "statement": "Komodo provides a deployment control plane with a custom Periphery image that includes SOPS and age for managing encrypted secrets.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/komodo/README.md",
+          "version": "repo-file-v1:sha256:3f50baa5440a409ba44bacc599af1ad3c7e1259aef5ffe1ab89706ca12e96356"
+        }
+      ]
+    },
+    {
+      "id": "claim_9642302c8eb64e1eb0245a5551ad06af",
+      "statement": "External requests enter the homelab via Cloudflare (if using Cloudflared tunnels) or directly to the public IP, then are handled by Traefik.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:419c1f86518e8bdf89429b17126cb970f12cba272232396d17a9d5c661453271"
+        }
+      ]
+    },
+    {
+      "id": "claim_4dd49860e1394ca7a920eb2b2218a6fc",
+      "statement": "Traefik performs TLS termination, applies middleware (including CrowdSec bouncers), and routes requests to services.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md",
+          "version": "repo-file-v1:sha256:4e250cff4832d232c450d31e10c75c812f5b89b8082f69a58a8e94d1b6138524"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

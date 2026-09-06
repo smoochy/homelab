@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:bfdb598c4437e168863ad6718db94a19bfa9aa8e59b4649af22208ce1f236e3e",
+  "claims": [
+    {
+      "id": "claim_a206fe8abd4e41db95043f202c26f0db",
+      "statement": "Traefik serves as the core ingress, routing, and edge security stack for the homelab network.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md",
+          "version": "repo-file-v1:sha256:4e250cff4832d232c450d31e10c75c812f5b89b8082f69a58a8e94d1b6138524"
+        }
+      ]
+    },
+    {
+      "id": "claim_36954335de1b4a659bcc27445847c791",
+      "statement": "Traefik uses a read-only Docker socket proxy to discover services and integrates with CrowdSec via the official crowdsec-bouncer-traefik-plugin.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md#L54-L71",
+          "version": "repo-lines-v1:sha256:70c1861ff28c8e8d6f8862457a249a73f1202f6445df041b1723d98ad89efaac:eyJzZWxlY3RlZExpbmVDb3VudCI6MTgsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjIyMTgzNTk3M2YzYjQwZWE1MGZiODQ2ZGJjMDk2ZDJjMzlmMDI0OWVkNjA1YWE1NDllYjM1ZDA5ZGQzZTljYzAiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjcxMTFmZWNiYTdkY2JhMmNkMTM5MWM1YTlkYmY0MTFhY2YzZTAzMjE0MzgwNzhjOGQzM2MwYmQ0OWU1ZTFkYzIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5YmEyMWZjOGEyZGEwNTlmNDc3NGRhYzFmMTdlNjkxM2Q5ZmRiNGEzZTBmYjQ0MjA5ZjUyZDllNDgzZjg2ZDEifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_8671586db3e34f3cb0a4ac683c6bb5ee",
+      "statement": "Cloudflared provides an optional Cloudflare Tunnel connector for exposing selected services safely without opening inbound firewall ports.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/cloudflared/README.md",
+          "version": "repo-file-v1:sha256:0296de67f46fde695e2ff3bdf8c0b35ed28d2c9d957649c8b0dce95baf8d998a"
+        }
+      ]
+    },
+    {
+      "id": "claim_68e18f0671274816b54b6d8242e553a5",
+      "statement": "The AdGuard Home + Unbound stack provides DNS filtering and recursive DNS resolution for the homelab edge, with optional synchronization for high availability via adguard-home-sync.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/adguard-home-unbound/README.md",
+          "version": "repo-file-v1:sha256:b50ee13498b3796fc5f87a826bd7e8558af19976507d9f7a74f3ec41ebe992ec"
+        }
+      ]
+    },
+    {
+      "id": "claim_6240dae41a024e83ad6ebcddce304e5a",
+      "statement": "CrowdSec provides security telemetry, bouncers, and a dashboard for perimeter defense, storing its state in a SQLite database with write-ahead logging enabled to prevent concurrent access errors.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/crowdsec/README.md#L1-L50",
+          "version": "repo-lines-v1:sha256:aa1ffd10762ed779cbe3dc52ff3fd26bfb4990c9489847ce8236d722fa235664:eyJzZWxlY3RlZExpbmVDb3VudCI6NTAsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImE1YjE4NTU5YTk4ZWIwMDMwZGQ5MWQxNGQ4ZGFkMjM2NTAwM2RjNzBkNTJmMDk1YTllMmI0ZGI4MWMxMjM5Y2UiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjgzYmRmZjg1NWRmMDU3NDAxMmEyZGU1MjY0ZmRiM2NkMmI5OGNkMDAzMzNmNDNmODcxZGM3YTczYzQ0MmQyNmYiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjowLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6ImUzYjBjNDQyOThmYzFjMTQ5YWZiZjRjODk5NmZiOTI0MjdhZTQxZTQ2NDliOTM0Y2E0OTU5OTFiNzg1MmI4NTUiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiYTJkZWFkYTI0ODhhYmI4ZWJiNWEyYzY0NjllODY0NzIwMThjNGU2NTYyM2EwYmVjODY1ZWQ1Yjc4NTczZGUifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_dc4b28577e0f4693b083a3a1fe6b3f94",
+      "statement": "CrowdSec integrates with Traefik through the official crowdsec-bouncer-traefik-plugin, sharing an API key and updating Traefik's dynamic configuration via the crowdsec-manager service.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/crowdsec/README.md#L52-L58",
+          "version": "repo-lines-v1:sha256:7334ecab294fdcd742aa83e21cc43160d4bf11b689b1297ea56fba2c2e17fe40:eyJzZWxlY3RlZExpbmVDb3VudCI6NywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODBkYWZiNDEzODg2MWRhOTUyYmQ4MjExNTdlZjRkYjdiYjIwOTgzYWFiZWFlMjAxOWM2MzA5ZTBiZWY2MmNkMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzIwYjE4ODI0MDQzNjM4Zjc1NzI3MTBlZDIzODAxNzk2YWQ5NmI3NzdmMDMzYzIxNDQ3MGU5YjQzMzYzOWNjNCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmU0NDQ1OWEzMjZhODlmMjg4YjExMmQ5YmQ4YzVkOGNiZDlhNGY1ZTJhYWNmMDYxNmYzZjllZDc4OTM1ZGY2MSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjEsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2Y0ZjBmYTUzZGE5Mjg4YTgxY2EyZWJkMzVjMmI5NjE4NjE4ZTg0YmQxZTRhOGU4MTI2MzZiNzA5NzBmMmM3YSJ9"
+        },
+        {
+          "resource": "repo://stacks/traefik/README.md#L58-L71",
+          "version": "repo-lines-v1:sha256:e38f5c60dfb39453ffa27761562f8ebba854ed277f6e945a817d221e1d217567:eyJzZWxlY3RlZExpbmVDb3VudCI6MTQsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImVlMjBkZWM2Y2JhNmZmNTcyN2ZkYjQ4ZTBkNTZjN2E0YzZhMDhkNzExMzEyYzNhNTlmOWIwYjQ0ODEzNzU4NzMiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjAxYmE0NzE5YzgwYjZmZTkxMWIwOTFhN2MwNTEyNGI2NGVlZWNlOTY0ZTA5YzA1OGVmOGY5ODA1ZGFjYTU0NmIiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjU3OTZmOGJiNWE2NmE5NTM1NDg5Y2FhMzJlMjRhYTZlOWM4NDIwZWNiMjBjNmI0YjBiOTNjNWUyMmExYzZjZjAiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjoxLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjM5YmEyMWZjOGEyZGEwNTlmNDc3NGRhYzFmMTdlNjkxM2Q5ZmRiNGEzZTBmYjQ0MjA5ZjUyZDllNDgzZjg2ZDEifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

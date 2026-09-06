@@ -1,0 +1,7 @@
+{
+  "updatedAt": "2026-09-06T11:00:18.784Z",
+  "command": "update",
+  "model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "status": "interrupted",
+  "language": "en"
+}

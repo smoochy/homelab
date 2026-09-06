@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:f8e54191676c2dc95e816e502c853b2019a3cfa818981c724a24718777a2066f",
+  "claims": [
+    {
+      "id": "claim_dcee28fcfe5c4e7c91b0acfadbcff41c",
+      "statement": "The Plex stack is described as a media server stack for library streaming and remote access in its README.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/plex/README.md#L3-L4",
+          "version": "repo-lines-v1:sha256:b3ab5440658201b726f20f4f749bbe50a39c31b5e44404088bdbb9450904e8be:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzQ5OTVlOTkwMjEwYzVlYTA3ODcyMWYxYTNkYjIxOGUyMjg1NWQ2ZjdkYmI0ZDZmZTMwMjRjOGQ1MmIzMDA3ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGU3YmU1YWNlZmQ1NTAxMmVjYWQyZjhiZTE5YTdjOTkyYjQ2N2ZmMzZlZTUzY2I1MTJjODAyYjkyNTgxZWE1MyIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMDRlZTQ0ZWUwMDUwNThjM2I1OGEwNTIxOTI1NTExM2M4NDRiMWEzMTkzMjE5YTMyMWQ4MGVmNWJhYTM1M2NiNCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0a6730a7bc7a434b8b355a5b051656c0",
+      "statement": "Plex is configured to use the br0 network with a static IPv4 address of 192.0.2.103 for client traffic and the smoonet network for internal Docker reachability.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/plex/compose.yaml#L16-L21",
+          "version": "repo-lines-v1:sha256:4d8def3f855753fd4ddf3fc197831d9f837c7a03e7ba59d397a08f589be19117:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNDQxMDNhNDZiNDkwY2IzYmMyMTE1M2ViMDBlZTdhNTkwODExN2VmMDY5ZWUzYzFiZDUxOGFiZTRhZjIyOGMzMSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNmU4YTg2OTMyZjNkNjA4YThhMjNlODZkZjcyNzI1YWExMWZlZjIyOGE1ZjFkMTQ0MDBiM2UwYWY1NmUxMWU5NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMDc2ZTNiZmIzODc5NDE0OWVjNzE0MGI1YWE1NDA5YTU4NjJmMWEyYWJiNTE2MGIwMzU5MTk4OWQ3OGJiYmJhOCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiOTYzYmQ3OTkxMGE1MDUxNzc4Y2UxYjY5ZWY5MWY1M2Q5ZGE2NWQ4YjFiY2Y2ZjY3NGYxOTljYWY4OGJjZmJkYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_bb112b3aa21149899cdef34974ccde4f",
+      "statement": "Plex includes a healthcheck that tests the /identity endpoint via curl every 30 seconds with a 10 second timeout, 3 retries, and a 60 second start period.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/plex/compose.yaml#L8-L13",
+          "version": "repo-lines-v1:sha256:d9e836ecadd2eb8091138e29050eac9c084968cb254be50ed4ccc42bfa15e345:eyJzZWxlY3RlZExpbmVDb3VudCI6NiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYmM1NzUzOTJhNzE3ODI2YWJiNDg3YWQ5NWU3MTQ3ZmIwNmE2MWVhMzg5YjhlODRkNjZmZWU3NTUyNmIxYTExOCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMTk1MTEzMWJlOTdjYjdhYmJlOWI5ZjczMmUxNzYxMTRiYTc3ZGRjOGI4YmQ2NGI3MDVmNWRmZDRiNzgzYjYyZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzFhNDlmZmNkNTg1MjFmNDM2YzZmMzAxOTE0NGQ4N2NhNzI2YTRhMDZmOGI3Mjg4MzFlZTY0N2VjNGNmNTg4NiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e83adbe38c394deb835327f8a2141d94",
+      "statement": "Radarr is described as a movie acquisition and library management stack in its README.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/radarr/README.md#L3-L4",
+          "version": "repo-lines-v1:sha256:eaccd409b0315fbe3d442d1f1b3d0e5b5629b384327957764b47ee06c5d7ae05:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiM2Y4NzQ1M2YxY2FhYTYwY2U2Zjk0MjZmZGRhN2ZkMWMwZjk1OGI0NWNiMGI0Mzc2OTYzNTIyMWFiNDQ0NTFhZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiN2NlMDhiMGRkMzBkZDE2MzgyOTU3NzhkYjRjYmUyM2ZmZGI1ZjAxYzBkMjUzZTA3NWUzMDdkMjYxNzZhOGFkZCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMjI4OGYwMGFjYjU0ODkwMjgyYmU4ZDJlNjUyZDc5ZjBkOWMzNzY0MmRmZGViZWQ2ZWUwNDRkZjFjZDA3MTg3OCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_3d04a287b9c64dfb881ce3d93adf1e5d",
+      "statement": "Radarr is configured to listen on port 7878 for its API and uses a healthcheck that wgets the /ping endpoint every 30 seconds.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/radarr/compose.yaml#L16-L24",
+          "version": "repo-lines-v1:sha256:a27b76b0a0134804b46a50615ae7d00e339dc06e7bfcf2cafe3f214b5650dc92:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTVhMGZjY2FmZGU1N2IyZjZhYjU0ZDYzY2EzOGI1N2YzMDQ5NjRkMjY1MDAxNDVmODljZWZmYWU5MzA0YmFjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2YzZjcwZDg1NGQ0MGJiNWNhODViN2RjNDBiNDBjNTI4N2Q1NjNhYzM2ZmFlNGJjMDIwMWQ0MmVhYmQ2MTY4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNDY0ZWRjZWY2ZTBlN2MzNGZjMzllMTEyNTRmY2M1MTRjMzQzMzM2Nzc4ZGViODMyZjhmNjYyMGUyOWU3Njg4MiJ9"
+        },
+        {
+          "resource": "repo://stacks/radarr/compose.yaml#L33-L34",
+          "version": "repo-lines-v1:sha256:783d849bacf5622823ab0946d7dba25f30888c27b4b5a9908f77c4135932b895:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmMxNmVkMjM5YTM2NTFiNTA3OWMwZTRlN2YwNzg0NGVhMzI5Yzg3NjI4YmY5ZmNjNDYzNjc3MzNmNWUxZTkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDc0MzY2ZDA3ZjU1MTA4NzhjYjk2MmQyZGNkNmU0MTk4NGFhNTgwNGQ1MmJmZjQyNzNjYzZjODA0ZDcxMGQ2NyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMjI1YmQxMzZkNmIxMWM3MjI1N2FiMTc2NjY5NjNlZjU4OGU1ZGViNGRhYjhmYzk0MmM4MmJiYjhmM2FjNGYyYiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiMzg5NWUzYzk0NTZmNzYyOTYyMWQyMzE2NjY0Yzc3MTEzYTlkNTg5ZDllZTFhYTM2ZTFlYjU5Y2Y0YjJjZDdmYyJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_4b11d0d40cb44f4b9469c34c5b260541",
+      "statement": "Sonarr is described as a series acquisition and library management stack in its README.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/sonarr/README.md#L3-L4",
+          "version": "repo-lines-v1:sha256:7f59406506808fb49c69df98f5dcefeebd5400275f14d228c3bad7b5948c429f:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMzhiMTBjMGY3YTNiNjA0YThhNGNjNjYxMWRkNmVjMGJhNWE1MzVhMWFhMTZiZjk3Mjk4ZTdkOWRiZTdlOTQ2ZiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNjhjZGM1MjcyZTI1OGZmYjBlZWI3MzNjM2Q4ODE0ZjcxMTI5NGY0ZmJiNjIyOGRmNzZjYjkzMzc1MjdkYzNiNCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmIyNGIyMmRmZjA3YzliZDI4OWZiNWM2YjdlNWM1MDA3NjZkM2Y5YWMyODUyZWQ4YmNhYTkyNjlhYzdlYjkxMiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_0103f419df13477da0ad56eb04a0ab41",
+      "statement": "Sonarr is configured to listen on port 8989 for its API and uses a healthcheck that wgets the /ping endpoint every 30 seconds.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/sonarr/compose.yaml#L18-L26",
+          "version": "repo-lines-v1:sha256:f167154ce8486df70719ef730c869cbba990fdad0443af9975c6efec0ba1724b:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTVhMGZjY2FmZGU1N2IyZjZhYjU0ZDYzY2EzOGI1N2YzMDQ5NjRkMjY1MDAxNDVmODljZWZmYWU5MzA0YmFjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZGI3Y2M2MzE5NzIyOTIzODJhYmVlOTM4YWFkNzFhZGYyOGFkYzIwOTQwYzk1MDdmM2QyNWRlOTQ2NjU3NTljNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzc0NWRlMjg2ZjMxNzJhZWE1YmJkNGRkY2MxZjRmMzRkYzMwYzdmN2RmYTgwY2JjYzk5ZGM2YmMwMTA5NWYxNyJ9"
+        },
+        {
+          "resource": "repo://stacks/sonarr/compose.yaml#L35-L36",
+          "version": "repo-lines-v1:sha256:d5841fe88a2c9ad213c7927520818caa607cbc855e4faf39a8f001af04610503:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmMxNmVkMjM5YTM2NTFiNTA3OWMwZTRlN2YwNzg0NGVhMzI5Yzg3NjI4YmY5ZmNjNDYzNjc3MzNmNWUxZTkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiZWM1M2E0NGFkYWJjMGY1MTlmYTJjNGUyOGQwY2ZlYTAzYzUwN2RmN2JlZjY2NWY3M2QwYzMxOTY4OWQyZjUyYyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMmFkOGFmOTkzMzViNjdkM2FhNGYyZWEwMGRjMDI5OTQ0ZmNhZTczM2QwZDg3OGVhZTdkMzJlNWNmMmZhNmM3NiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmYwZWFlNjA5NDJlNDNjYzgwMTYyMDZjNzljZTg2YThkODI0MmQ2NTAyNGM5MDI4MzA4MmRjODllYWU4MjE4ZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c196da53f31c45999525fcf082723443",
+      "statement": "Prowlarr is described as an indexer management stack shared across media automation apps in its README.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/prowlarr/README.md#L3-L4",
+          "version": "repo-lines-v1:sha256:041ca1f31f62c0d59d3c030fa32b171f35e581b60523d908e82e3c1f2216e77a:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNjc1Y2FiYmQxNWJhZjUyZTViZmQzYTlhZGJjYjEzNjBlYjM1MjdiNTU4MWNlOGUwNTM1YjNlZDkyYzA4NTU0NiIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiYTZhYTcyODk0NTQyMzAyNjllODEyZDUwNTY2MWE2MGYwODA5MjYyZTE2N2UxMTkzOTFiMWVmYWJjNzk3YTI3ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTAxOWI1ZTdlNjhiYTIyODMyZTNmNzhiYzRhZThmMzViZWI2ZGJkMzM4ZjJlMDhkYTc0YTEyOWI1ODgwOGVkZCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c14c23f8c1a7449cae5ce0b8d5e68482",
+      "statement": "Prowlarr is configured to listen on port 9696 for its API and uses a healthcheck that wgets the /ping endpoint every 30 seconds.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/prowlarr/compose.yaml#L16-L24",
+          "version": "repo-lines-v1:sha256:123f16559e10db011b98c82f69486a3503a224b99c9ee1ee10dad8886ab1a119:eyJzZWxlY3RlZExpbmVDb3VudCI6OSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYTcxZGI0ZTg3NWViOWE2YWYxNDU1NjMwNTg2MTk2Zjc0MjIyMzEyOGIzNjI1ODAwOTg0OWE2OGY4MDJjY2Y5YyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYTVhMGZjY2FmZGU1N2IyZjZhYjU0ZDYzY2EzOGI1N2YzMDQ5NjRkMjY1MDAxNDVmODljZWZmYWU5MzA0YmFjMiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiM2YzZjcwZDg1NGQ0MGJiNWNhODViN2RjNDBiNDBjNTI4N2Q1NjNhYzM2ZmFlNGJjMDIwMWQ0MmVhYmQ2MTY4ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYTBmMzhhYWZlNGY1MmUwM2IxYTM5MjI3MzlkNzg1Y2ZkMWQwZjRjMWJmMDZlMmQ2NjE0MjM2NzE3M2ZiYzVkZCJ9"
+        },
+        {
+          "resource": "repo://stacks/prowlarr/compose.yaml#L34-L35",
+          "version": "repo-lines-v1:sha256:5a304c5e4a6ef8c683b424c5eb8c6c3ae4996136917793ab9444bd10e839cdb6:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYmMxNmVkMjM5YTM2NTFiNTA3OWMwZTRlN2YwNzg0NGVhMzI5Yzg3NjI4YmY5ZmNjNDYzNjc3MzNmNWUxZTkzZSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNDliYmI5YWQ0ODFmM2ZiMzAwMTczZjBmNWE5MGM5OGY0MGEwMTM0MzM2NGJkOGRiNmY4OTNjMjI4ZWU0YjNmNiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGI0ZTVhYWYxZWFhZjI4ZmE0Y2QwZjA2MTdiYzk1YjAzMWFlYjdlYjhkMjFmMmE2OWY0MDhiYWJhOGM4NzQ0MCIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmEzMzRmY2UwNWJiNDg4N2I2MWE4YzFkYWZmYzFhZGEyNGQyMDc5ZTI1YWYxY2FhNDY4OGJiOGM4NGUyYzhhMSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

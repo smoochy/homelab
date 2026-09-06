@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:cb9293b1eb8f135f22964443faafa774a474eec7212d867ba37f02d591312f7d",
+  "claims": [
+    {
+      "id": "claim_af64cc4bd899464986be3356c71069ea",
+      "statement": "The Unraid Appdata Backup Uptime Kuma Maintenance Helper coordinates Uptime Kuma maintenance mode with the host's appdata.backup system by starting maintenance before backup and waiting for service recovery before exiting maintenance.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/uptime-kuma/scripts/appdata_backup_kuma_maintenance/README.md#L4-L6",
+          "version": "repo-lines-v1:sha256:89d8f82017c13218ad20619fef989b0ee508d391ea2218eaac453d00a0c3ac5c:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNzRiNDExOThjODc0NDA2NDc5OGI1NjhhODA2YjAwODM0MWVkYmJlMzUyYTc0YTE4MWEwNmRhOGM5NzBlNWE3NSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMGRkOTcyMzMwZTc2MjhmY2IxMWYzOGRmZDUzZWNmMmE3ZjY1NDg1MDYxMTFmYjgxZmM1ZGYyZWNhZmI5ZWRkNyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiNzY1MjRjMDYxYTIxMzE4YzgxMjYzODBhYzIxNDBhMTZiOWY1OTFmOTQwMjY5Y2I0NzRhOTNlNDAzZTkzODcyNSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiY2ZiYTkwMmFjZWUxY2EyYTAzNmMwMzYzY2MxZTIzNjk4YTc0NDczMTVmODNkYzkyNGM3Yzc5NTlkMzdiNmI0YSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_c5fc6d3e7a754af9ad0625f2e0312d2b",
+      "statement": "The Cloudflare Trusted IP Sync script creates dated backups of Traefik's traefik.yml and dynamic.yml files under /mnt/user/appdata/traefik/backups before making any modifications to the configuration.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/scripts/cloudflare_trusted_ips/README.md#L26-L28",
+          "version": "repo-lines-v1:sha256:ed632ef15a118528a0437f270b8eea2753eda29e69b681d2e34fae1c051eb5af:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMjU5M2JhMTU5NTkwZDhjM2NlOGQ3YzllODlhNjBmMzE5ZDY5MjhmMjBjNGU1Y2RmNTZmNmRlNzdhZmJjYmE0NCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiYzIyZjczNTE5OGJkNzQzYWE0NTc3MTU5NzE1MjlkZmZhNWM5MWU4YWNiYjMyNDk3MTIyNTRkNmM0OTYxZmQ5ZiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMzJkMDkwNGFjYWU4Mzk4MDIzZGI3ZGZhMDc1N2M1ZjVlMzFhNzdhNGVlOGZiMjRjM2I4ZWQ4MTc5MWRiYTBkZiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiNzBhNTQ2NGQ2NTgzNTU0ZTBjZjE1ODU1MTM2OGY3NGM0NDI3NTBlMTQ4ZDMzZGU2M2JkOTU2YjA5NGI0MGE4ZSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_f44d4909a88a41e3b89851bed3ede804",
+      "statement": "Komodo-managed configurations, including Traefik's runtime .env file, are version-controlled and encrypted using sops/age in the homelab-private repository, with encrypted artifacts committed alongside tracked templates.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/scripts/cloudflare_trusted_ips/README.md#L30-L42",
+          "version": "repo-lines-v1:sha256:e462e1b30ec304d9d7b0a833c81246ef328165686ff56a1a877fcaf123b580de:eyJzZWxlY3RlZExpbmVDb3VudCI6MTMsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6ImM1OTQ3NDQ4MzM1NThjZTM2MGU3MTA3NjA2MDM4NTc2OThjZDVjYTg5MTBkZGI3ZGM5NDg3YWZmZDlhMDFlMmEiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU0Y2M5NTg2ZjJiNzJkMjhlNTAzYWIxOWE1OTZlZDVmYjNkYjU2NThhOTcyMDc3OTQ2MDFkMmI0MzFhNDU2OWUiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjQ2NTEzNzQ0ODFmZWU5NWIwMjU4ZmUzOGYxMzM0ZjFjMmI2M2QwZjI1ODcyOTA5ZWEwMmYwMzkwNTNkYzgzYzkiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6IjZiMGM3NzVjNWUzNTc1ZWNjMmE2NDRmZWE4MTAyZWI2YWEyMGMxZWI5NWVjNWQ2NmIwN2VhYmJlYmEzMTNkNzIifQ"
+        }
+      ]
+    },
+    {
+      "id": "claim_7c53e9151a1949a9bbc9e93c6ad7556e",
+      "statement": "Backup procedures for stateful stacks like Uptime Kuma integrate with monitoring systems to prevent false alerts during planned maintenance windows by coordinating maintenance modes.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/uptime-kuma/scripts/appdata_backup_kuma_maintenance/README.md#L29-L39",
+          "version": "repo-lines-v1:sha256:467e65aaccbd924c73d297c9806fe0738c943756931b56074b271275df32f659:eyJzZWxlY3RlZExpbmVDb3VudCI6MTEsImZpcnN0U2VsZWN0ZWRMaW5lSGFzaCI6IjZiNGM5MGZiYzhiM2JjNDkyMWY0ZTkzNmQwNzJhZjZjNDQ2NmVhYjNkZjBhYWJmOTBmNmY2MWQ5NTIwNjA2OTQiLCJsYXN0U2VsZWN0ZWRMaW5lSGFzaCI6IjU3NzE1OWQ2N2IxOGZjMzFkZmJmMThhOTlkZDhjMWQ4NzMzYWM3OGExMGNmZmIxNmI0ZWUzY2QxYmEwOGJmM2IiLCJwcmVjZWRpbmdDb250ZXh0TGluZUNvdW50IjozLCJwcmVjZWRpbmdDb250ZXh0SGFzaCI6IjI4NjU2NjE2NDc1YTk2NDgyZmRhMjhkZWU1MDFiNmEwOTk1Y2QxYjZmOTBjZWE5ZWIzYTA3NjZlZWE1MTM4OGIiLCJmb2xsb3dpbmdDb250ZXh0TGluZUNvdW50IjozLCJmb2xsb3dpbmdDb250ZXh0SGFzaCI6ImNmNTRiZjhhOGNlMjFlYzRkYTBhOTI1MTEyZTgzZjdhZGE3MDc5YTM3ODkzMjE3M2I1OWY3YTlmZTQwNWViZGUifQ"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

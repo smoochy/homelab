@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:d8a4c5ca4f8345ec8b65adfac5e720186f259ae125508529a0a636e5ffb34f2e",
+  "claims": [
+    {
+      "id": "claim_22955b5d8c144a40a1af67dc5bff5e42",
+      "statement": "The homelab is organized into four primary domains: edge and networking, identity and access, media, and utility and infrastructure.",
+      "evidence": [
+        {
+          "resource": "repo://README.md",
+          "version": "repo-file-v1:sha256:419c1f86518e8bdf89429b17126cb970f12cba272232396d17a9d5c661453271"
+        }
+      ]
+    },
+    {
+      "id": "claim_85c6cc8c517b4baca97754bc67b51189",
+      "statement": "Each stack in the /stacks directory includes a compose.yaml file, a .env.example file, and a README.md file.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/.env.example",
+          "version": "repo-file-v1:sha256:c79fd6dffca4f1faa95de98e0e5ada83761167aa0ff41808cef821e62849dcea"
+        },
+        {
+          "resource": "repo://stacks/traefik/README.md",
+          "version": "repo-file-v1:sha256:4e250cff4832d232c450d31e10c75c812f5b89b8082f69a58a8e94d1b6138524"
+        },
+        {
+          "resource": "repo://stacks/traefik/compose.yaml",
+          "version": "repo-file-v1:sha256:f1bbfe82ea86f6e1e3e902ef07db2e55bdfe3a9b219bb9dca5ee141c3a2cc82e"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

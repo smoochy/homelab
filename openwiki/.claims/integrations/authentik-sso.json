@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:2d1f75d1e76e2d40d7cf878bbe402d398bbe83d0eb806977c3c885e4b243600b",
+  "claims": [
+    {
+      "id": "claim_931f135d154848dba06ebac3c834ea64",
+      "statement": "The Authentik stack is not yet in active use in the current homelab deployment.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/authentik/README.md#L34-L35",
+          "version": "repo-lines-v1:sha256:0c489b8c51642782342c012312fd482a155f0b52a1ceca557751a01060dd830a:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBhMTA2MmRlMWRhY2RhMjgwM2MwNmRkMTBjYWI2YzhjMmVhNmJmNmQwZjE2OWUyOTRiNWY3OWJkMzhkNmM4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjYwOTYwMTg1YTVhYjY1NWRhZmFiOTBiOGUxNTQ5ODAwN2I3YWZjYzg0NzI0MjBkNjliNmE5NDRlYmRkYjU2YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmMwOWJlZDE2YzI0ODZkNDI3MGRkNDZmYjAxM2M0NmFjYTI2YmYwOGVmZGUzMzBkZTNkNWMwOWUwNzY1OGI5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_6792192b74044c9494c9ae5057a6131e",
+      "statement": "The full configuration and integration of Authentik with Traefik is planned for the coming weeks.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/authentik/README.md#L34-L35",
+          "version": "repo-lines-v1:sha256:0c489b8c51642782342c012312fd482a155f0b52a1ceca557751a01060dd830a:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiMTBhMTA2MmRlMWRhY2RhMjgwM2MwNmRkMTBjYWI2YzhjMmVhNmJmNmQwZjE2OWUyOTRiNWY3OWJkMzhkNmM4OCIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiNjYwOTYwMTg1YTVhYjY1NWRhZmFiOTBiOGUxNTQ5ODAwN2I3YWZjYzg0NzI0MjBkNjliNmE5NDRlYmRkYjU2YSIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZmMwOWJlZDE2YzI0ODZkNDI3MGRkNDZmYjAxM2M0NmFjYTI2YmYwOGVmZGUzMzBkZTNkNWMwOWUwNzY1OGI5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjAsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZTNiMGM0NDI5OGZjMWMxNDlhZmJmNGM4OTk2ZmI5MjQyN2FlNDFlNDY0OWI5MzRjYTQ5NTk5MWI3ODUyYjg1NSJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_45c7d77351d1485faef9465a0cde7a86",
+      "statement": "Traefik serves as the core ingress, routing, and edge security stack for the homelab network.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md#L3-L4",
+          "version": "repo-lines-v1:sha256:fe692d15246e90ea1135ff0bba7575c9d6d2ec39fc054e2cc60b211ff77c2875:eyJzZWxlY3RlZExpbmVDb3VudCI6MiwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiNWEzNTQwZDRjNjI4OTViNjRlYWI1ZjE1ZTVmZDJjZDNkZWQ5OGRlZDY0YWJmMjJlMmEwMWFmZWRmNTEwOGE0OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiMDFiYTQ3MTljODBiNmZlOTExYjA5MWE3YzA1MTI0YjY0ZWVlY2U5NjRlMDljMDU4ZWY4Zjk4MDVkYWNhNTQ2YiIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjIsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiZTMyNGYwNjY5ZGQ3MzQwYWMyMGI0YTVjYzU0ZTZkMWI3NzhlYWI0ZGUwMzZiNmViMmQ4NGZlMjM2OTNlZTBiNiIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYmE0MWFhMmY0ZmIyNzRhM2UyZTMxY2ZkNWRmZmY4NDQ0ZDJmNmU0NTJkYzUyNTYxM2U3YTY4ODcwMDdjOWMwOCJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_e2f6e44a94014fef962e4efbabf86e3d",
+      "statement": "The Traefik stack uses the official CrowdSec Traefik plugin for edge remediation instead of a dedicated forward-auth sidecar container.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/traefik/README.md#L60-L60",
+          "version": "repo-lines-v1:sha256:838b31c2a729bd748849b18d7ceec9b5f83a5c574595fb8b732e2ff9a04a2ae3:eyJzZWxlY3RlZExpbmVDb3VudCI6MSwiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiODM4YjMxYzJhNzI5YmQ3NDg4NDliMThkN2NlZWM5YjVmODNhNWM1NzQ1OTVmYjhiNzMyZTJmZjlhMDRhMmFlMyIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiODM4YjMxYzJhNzI5YmQ3NDg4NDliMThkN2NlZWM5YjVmODNhNWM1NzQ1OTVmYjhiNzMyZTJmZjlhMDRhMmFlMyIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiOGFlMDM4MDEzYzI1ZjdiNTg5OWU5YTZiMWU0YzFkYWI5Njc2NzFiYWI4ZmM0MmJlZDBmZjJjYWJkNmUxYTI5ZSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiZmYzNWRlZjc3OGEyODcwOTViNmU0NGUzOWJiYjBjMTY0MmU4Y2VhOGM3ZDU0Yjg1YzA2ZTZmYmMwY2M2ZWQ0ZiJ9"
+        }
+      ]
+    },
+    {
+      "id": "claim_2a28814cc0284d6b8f05f76a935ed792",
+      "statement": "The Authentik stack includes postgresql, server, and worker services.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/authentik/README.md#L11-L13",
+          "version": "repo-lines-v1:sha256:fb41d53616696bf84eb005b9c10eaeaac4004f16d8d151c9315b9de0569cfbb8:eyJzZWxlY3RlZExpbmVDb3VudCI6MywiZmlyc3RTZWxlY3RlZExpbmVIYXNoIjoiYjFmMDRhZDMxMTMwZDM3ZmZmMTA2MjY1Yzk1NWNjYzE1YjFiYTkxZDQ4ZDZjZDc5YWJiZjg3NzY3ZWFlYWQ3OSIsImxhc3RTZWxlY3RlZExpbmVIYXNoIjoiOGU0ZTlhY2RiMWE2NWYzZjg1ODkzZjUzYTg2NTVjOTBjNzQ3M2ExN2YwMmI0MTE0MzYxMWQ3NTA2ZDI2Njg4NCIsInByZWNlZGluZ0NvbnRleHRMaW5lQ291bnQiOjMsInByZWNlZGluZ0NvbnRleHRIYXNoIjoiMGJjNThjZjJlYzU0ZjdhM2VhODI2OTNhODBiZDJjM2Q1NzY4OTI3MmI2NDUzNDgxNGYwYTE3ZDJjOTI5YjgyMSIsImZvbGxvd2luZ0NvbnRleHRMaW5lQ291bnQiOjMsImZvbGxvd2luZ0NvbnRleHRIYXNoIjoiYjg3MDVjNGMwMzE0ODAwZmZlODM3YzBhZWM1NjdlYjliNGYxYjJmMzhjYzk1YjVkYmIzNmQ1YjUwNDNlZWJlOSJ9"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

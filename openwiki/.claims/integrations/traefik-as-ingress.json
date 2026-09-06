@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "pageVersion": "sha256:101a99f15ea4c8c4d3deb59e927bde0c69460401beef42910d82a00723968ab5",
+  "claims": [
+    {
+      "id": "claim_d92dadb1fa344c998c7e5dce185b7f2a",
+      "statement": "Traefik serves as the central ingress controller for the homelab, responsible for routing traffic to internal services, applying security and transformation middleware, and terminating TLS connections. Services are exposed through Traefik using Docker labels that define routers, middlewares, and services. The configuration splits traffic between internal and external networks, applying different middleware chains based on the entrypoint.",
+      "evidence": [
+        {
+          "resource": "repo://stacks/radarr/compose.yaml",
+          "version": "repo-file-v1:sha256:85d02f1ac34422657f8b12cf7518b9bf73dc6c13fbb6e31ac18f5320ae659cef"
+        },
+        {
+          "resource": "repo://stacks/traefik/README.md",
+          "version": "repo-file-v1:sha256:4e250cff4832d232c450d31e10c75c812f5b89b8082f69a58a8e94d1b6138524"
+        },
+        {
+          "resource": "repo://stacks/traefik/traefik.yml",
+          "version": "repo-file-v1:sha256:9a2e2ea35f7de7b4cff429d591a917bbead37d597e8a6a10ca827b28c7786e2b"
+        }
+      ]
+    }
+  ],
+  "verification": {
+    "by": "openwiki/0.5.0",
+    "at": "2026-09-06T09:58:25.192Z"
+  }
+}

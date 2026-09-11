@@ -30,7 +30,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/browserless/chromium:v2.56.5@sha256:4911ef6605b850f446b8cff4278ad5bbadeb8bd144f2c1657d76bc6553efd535
+    image: ghcr.io/browserless/chromium:v2.56.7@sha256:b1ba7b054af2891a8199f884d4bd249cf8c3bd2fa8a97b339077e40f92803ba8
     networks:
       smoonet:
     ports:
@@ -81,7 +81,7 @@ services:
       - LOGGER_LEVEL=
       - PLAYWRIGHT_DRIVER_URL=${CHANGEDETECTION_PLAYWRIGHT_DRIVER_URL}
       - TZ=Europe/Berlin
-    image: dgtlmoon/changedetection.io:0.60.3@sha256:ecacd9fd0c664a786b77daadbbbf51373519b29178a32df3ddbc5c594bc067ed
+    image: dgtlmoon/changedetection.io:0.60.4@sha256:7bb6963b730df6a1070f7a08a607b0eb7a87fe65abfa4742d876ad33bb1267eb
     networks:
       smoonet:
     ports:

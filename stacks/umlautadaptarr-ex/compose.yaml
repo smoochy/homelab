@@ -1,0 +1,82 @@
+services:
+  umlautadaptarr-ex:
+    container_name: umlautadaptarr-ex
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      # SSRF guard, pinned in the environment instead of the database toggle
+      # Setting.blockPrivateInstanceHosts. Sonarr and Radarr are reached at
+      # http://sonarr:8989 and http://radarr:7878 on smoonet, exactly the private
+      # hosts that guard blocks. The variable is undocumented - it exists in the EX
+      # source, in neither the README nor the Unraid template - and is re-read on
+      # every boot, so it cannot be flipped back through the web UI. Removing it
+      # breaks the connection probe in the setup wizard with no visible runtime
+      # symptom.
+      - UA_ALLOW_PRIVATE_INSTANCE_HOSTS=true
+    # healthcheck: mirrored from lexfi/umlautadaptarrex:1.3.0. The doubled $$ hands
+    # the port fallback to the container shell instead of letting Compose expand it.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- \"http://127.0.0.1:$${UMLAUTADAPTARREX_LEGACYAPI_PORT:-$${PORT:-5005}}/api/health\" >/dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: lexfi/umlautadaptarrex:1.4.0@sha256:0d0b9c9c39cf65c912c30bc4a942d4a2b28355c517c49f3cfa6a106bd515f456
+    networks:
+      smoonet:
+    # 5005 is the Fastify API the *Arrs call, 5006 the HTTP-CONNECT proxy Prowlarr
+    # points at, 5007 the Next.js web UI. Each has to be mapped 1:1 host to
+    # container or the UI's /api proxying and the indexer URLs break.
+    ports:
+      - "5005:5005/tcp"
+      - "5006:5006/tcp"
+      - "5007:5007/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/umlautadaptarr-ex/data:/data:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal only. No external router and no bypass-header router: the EX web
+      # # UI has nothing but its own admin login in front of it.
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+      # stacks/autokuma/README.md for why docker_host and notification_id_list carry
+      # Kuma's numeric ids and why every field is written out.
+      - kuma.umlautadaptarr-ex.docker.name=umlautadaptarr-ex - umlautadaptarr-ex
+      - kuma.umlautadaptarr-ex.docker.docker_container=umlautadaptarr-ex
+      - kuma.umlautadaptarr-ex.docker.docker_host=1
+      - kuma.umlautadaptarr-ex.docker.interval=300
+      - kuma.umlautadaptarr-ex.docker.max_retries=1
+      - kuma.umlautadaptarr-ex.docker.retry_interval=300
+      - kuma.umlautadaptarr-ex.docker.resend_interval=0
+      - 'kuma.umlautadaptarr-ex.docker.notification_id_list={"1": true}'
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/servarr.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  smoonet:
+    external: true

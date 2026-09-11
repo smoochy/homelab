@@ -1,0 +1,177 @@
+# /etc/traefik/traefik.yml
+accessLog:
+  addInternals: true
+  bufferingSize: 50
+  filePath: "/etc/traefik/logs/access.log"
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: keep
+      names:
+        X-Homelab-Access-Bypass: keep
+        CF-Connection-IP: keep
+        X-Forwarded-For: keep
+  format: json
+
+
+api:
+  dashboard: true
+  disabledashboardad: true
+  insecure: true
+  # Kept enabled here so the dashboard/API stays reachable on the internal-only setup used by this example.
+
+
+certificatesResolvers:
+  cloudflare:
+    acme:
+      email: "admin@example.com"
+      storage: "/etc/traefik/acme.json"
+      dnsChallenge:
+        provider: "cloudflare"
+        propagation:
+          delayBeforeChecks: 10s
+
+
+entryPoints:
+  web-external:
+    address: ":81"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure-external
+          scheme: https
+          permanent: true
+
+  websecure-external:
+    address: ":444"
+    asDefault: true
+    forwardedHeaders:
+      trustedIPs:
+        # BEGIN CLOUDFLARE IPs (managed by script)
+        # Replace this managed block with your own update workflow if you want to automate the list.
+        # Cloudflare IPv4
+        - "173.245.48.0/20"
+        - "103.21.244.0/22"
+        - "103.22.200.0/22"
+        - "103.31.4.0/22"
+        - "141.101.64.0/18"
+        - "108.162.192.0/18"
+        - "190.93.240.0/20"
+        - "188.114.96.0/20"
+        - "197.234.240.0/22"
+        - "198.41.128.0/17"
+        - "162.158.0.0/15"
+        - "104.16.0.0/13"
+        - "104.24.0.0/14"
+        - "172.64.0.0/13"
+        - "131.0.72.0/22"
+        # Cloudflare IPv6
+        - "2400:cb00::/32"
+        - "2606:4700::/32"
+        - "2803:f800::/32"
+        - "2405:b500::/32"
+        - "2405:8100::/32"
+        - "2a06:98c0::/29"
+        - "2c0f:f248::/32"
+        # END CLOUDFLARE IPs (managed by script)
+        # Until then, keep this list updated manually or replace it with your own automation.
+    http:
+      encodedCharacters:
+        allowEncodedSlash: false
+        allowEncodedBackSlash: false
+        allowEncodedNullCharacter: false
+        allowEncodedSemicolon: false
+        allowEncodedPercent: false
+        allowEncodedQuestionMark: false
+        allowEncodedHash: false
+      tls:
+        certResolver: cloudflare
+        domains:
+          - main: "example.com"
+            sans:
+              - "*.example.com"
+
+
+  web-internal:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure-internal
+          scheme: https
+          permanent: true
+
+  websecure-internal:
+    address: ":443"
+    asDefault: true
+    forwardedHeaders:
+      trustedIPs:
+        - "192.0.2.0/24"
+        - "172.0.0.0/8"
+    http:
+      encodedCharacters:
+        allowEncodedSlash: false
+        allowEncodedBackSlash: false
+        allowEncodedNullCharacter: false
+        allowEncodedSemicolon: false
+        allowEncodedPercent: false
+        allowEncodedQuestionMark: false
+        allowEncodedHash: false
+      tls:
+        certResolver: cloudflare
+        domains:
+          - main: "example.com"
+            sans:
+              - "*.example.com"
+
+
+
+# Plugins load from disk, never from the registry. The remote path (experimental.plugins) is
+# not usable here: plugins.traefik.io answers the archive download in 13-30s while Traefik's
+# client gives up after roughly 10s, the timeout is not configurable, and pre-seeding the
+# archive under plugins-storage does not help either, because the registry ignores the
+# conditional X-Plugin-Hash header and Traefik calls ResetAll() on a failed download, which
+# wipes the seeded tree. localPlugins is Traefik's supported offline path and is what runs here.
+# The sources live on the host under /mnt/user/appdata/traefik/plugins-local and are mounted
+# into the container at /plugins-local, which is the path Traefik resolves relative to its
+# working directory. The mount is required: a container-internal symlink does not survive a
+# recreate.
+# traefik-warp is deliberately not loaded, see rules/base.yml for the reasoning.
+experimental:
+  localPlugins:
+    bouncer:
+      moduleName: github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin
+
+
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+
+log:
+  compress: true
+  level: "INFO"
+  format: json
+  # Not used, so Dozzle can pick up the logs from the container's stdout
+  #filePath: "/etc/traefik/logs/traefik.log"
+  #maxAge: 14
+  #maxBackups: 10
+  #maxSize: 100
+
+
+# Serves /ping on the internal `traefik` entrypoint that api.insecure already creates on
+# :8080. It exists for the container's own healthcheck in compose.yaml and answers as
+# soon as the process listens, independently of router convergence.
+ping: {}
+
+
+providers:
+  docker:
+    # Traefik shall communicate with the Docker daemon via the TCP socket exposed by the read-only docker-proxy container (Deployed by Komodo on Host)
+    # DOCKER_HOST in compose.yaml wins over this setting, so both are kept in sync (measured 2026-08-19).
+    endpoint: "tcp://dockerproxy-ro:2375"
+    exposedByDefault: false
+    network: "smoonet"
+  file:
+    directory: "/etc/traefik/rules"
+    watch: true

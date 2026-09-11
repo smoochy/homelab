@@ -1,0 +1,100 @@
+services:
+  episeerr:
+    container_name: episeerr
+    image: vansmak/episeerr:3.9.0@sha256:af76729e423011d25421a63821c2769018ad2a109e63ebd8053370cb7fe7202a
+    # healthcheck: mirrored from vansmak/episeerr. The image probes its own
+    # /api/series-stats route; it ships no wget, so curl is the client here.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5002/api/series-stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "5002:5002/tcp" # Episeerr UI (non-standard port!)
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/episeerr/config:/app/config:rw
+      - /mnt/user/appdata/episeerr/data:/app/data:rw
+      - /mnt/user/appdata/episeerr/logs:/app/logs:rw
+      - /mnt/user/appdata/episeerr/temp:/app/temp:rw
+
+    # Environment variables
+    environment:
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+      - AUTH_USERNAME=${AUTH_USERNAME}
+      - EPISEERR_AUTO_CREATE_TAGS=true
+      - FLASK_DEBUG=false
+      - HOST_CONTAINERNAME=episeerr
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LOG_LEVEL=INFO
+      - LOG_PATH=logs/app.log
+      - REQUIRE_AUTH=true
+      - SECRET_KEY=${SECRET_KEY}
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (Episeerr specific: 5002!)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 31, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.episeerr.http.name=episeerr - episeerr
+      - kuma.episeerr.http.url=https://episeerr.example.com
+      - kuma.episeerr.http.method=GET
+      - 'kuma.episeerr.http.accepted_statuscodes=["200-299"]'
+      - kuma.episeerr.http.max_redirects=10
+      - kuma.episeerr.http.http_body_encoding=json
+      - kuma.episeerr.http.timeout=4
+      - kuma.episeerr.http.interval=300
+      - kuma.episeerr.http.max_retries=1
+      - kuma.episeerr.http.retry_interval=300
+      - kuma.episeerr.http.resend_interval=0
+      - kuma.episeerr.http.ignore_tls=false
+      - kuma.episeerr.http.expiry_notification=true
+      - kuma.episeerr.http.upside_down=false
+      - 'kuma.episeerr.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=episeerr
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/Vansmak/episeerr/refs/heads/main/static/logo_icon.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  smoonet:
+    external: true

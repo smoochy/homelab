@@ -1,0 +1,340 @@
+################################
+# 🦎 KOMODO COMPOSE - MONGO 🦎 #
+################################
+
+## This compose file will deploy:
+##    1. Dockerproxy (https://docs.linuxserver.io/images/docker-socket-proxy/)
+##    1b. Dockerproxy-ro, the read-only twin for observing consumers
+##    2. MongoDB
+##    3. Komodo Core
+##    4. Komodo Periphery
+
+services:
+  dockerproxy:
+    # Unpinned on purpose. This stack is exempt from the digest-pinning rule in
+    # docs/image-pinning.md: the deploy source is the host copy under
+    # /mnt/user/appdata/_composerize/komodo/ plus the Unraid override, so a pin
+    # written here would never reach the running container. Renovate cannot
+    # resolve a bare `:latest` to a version either, so it would sit unmaintained.
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: dockerproxy
+    restart: unless-stopped
+    environment:
+      # Compose materialises a `configs:` entry that carries inline `content:` by
+      # writing the file into the created container over PUT /containers/*/archive.
+      # Without this grant the proxy answers 403 and every stack that renders a
+      # config from .env - qbittorrent's wg0.conf among them - is created but never
+      # starts. Strictly weaker than the EXEC grant already given below.
+      - ALLOW_ARCHIVE=1   # Required for compose configs with inline content
+      # Komodo itself reads container logs over this proxy: Periphery has no socket
+      # mount and runs `docker logs` against DOCKER_HOST, so a GetContainerLog call
+      # arrives here as GET /containers/<id>/logs. Without the grant Komodo's own log
+      # view is answered with a 403. This is not only a Dozzle grant - it stays.
+      - ALLOW_LOGS=1      # Required for Komodo (and Dozzle) log streaming
+      - ALLOW_START=1     # Start containers/stacks
+      - ALLOW_STOP=1      # Stop containers/stacks
+      - ALLOW_RESTARTS=1  # Restart containers
+      - AUTH=0            # optional
+      - BUILD=1           # Needed for Komodo's build features
+      - COMMIT=0          # optional
+      - CONFIGS=0         # optional
+      - CONTAINERS=1      # Essential for viewing, managing, and deploying containers
+      - DISABLE_IPV6=0    # optional
+      - DISTRIBUTION=0    # optional
+      - EVENTS=1          # optional
+      - EXEC=1            # Required for terminal/exec access to containers
+      - IMAGES=1          # Required to pull and manage Docker images
+      - INFO=1            # Allows Komodo to retrieve Docker daemon information
+      - LOG_LEVEL=info    # optional
+      - NETWORKS=1        # Needed to manage container networking
+      - NODES=0           # optional
+      - PING=1            # Health check capability
+      - PLUGINS=0         # optional
+      - POST=1            # General POST operations (neede for image pull etc)
+      - SECRETS=0         # optional
+      - SERVICES=0        # optional
+      - SESSION=0         # optional
+      - SWARM=0           # optional
+      - SYSTEM=1          # optional
+      - TASKS=0           # optional
+      - TZ=Europe/Berlin  # optional
+      - VERSION=1         # Requesting Docker API Information
+      - VOLUMES=1         # Required for managing persistent storage
+    # Health probe. /_ping is the Docker API's own ping, proxied through. It proves
+    # the proxy is up and reaching the socket - not that the grants above are right,
+    # which is a config question no probe can answer.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:2375/_ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - smoonet
+
+  # Read-only twin of the proxy above, for consumers that only observe Docker.
+  # It exists so that recreating `dockerproxy` during a Komodo deploy cannot take
+  # Traefik's and Caddy's service discovery down with it, which is what turned a
+  # single stack deploy into a host-wide outage on 2026-08-19.
+  # POST=0 makes every reachable endpoint a GET, so the grants below are the whole
+  # attack surface. The `:ro` on the socket mount is cosmetic - it does not stop
+  # writes through the API, POST=0 does.
+  dockerproxy-ro:
+    # Unpinned for the same reason as `dockerproxy` above - see the comment there
+    # and docs/image-pinning.md.
+    image: lscr.io/linuxserver/socket-proxy:latest
+    container_name: dockerproxy-ro
+    restart: unless-stopped
+    environment:
+      - ALLOW_LOGS=1      # Dozzle streams container logs over this proxy
+      - AUTH=0
+      - CONTAINERS=1      # Container list and inspect: discovery, dashboards, monitors
+      - EVENTS=1          # Live container events, so discovery reacts without polling
+      - INFO=1            # Daemon information
+      - LOG_LEVEL=info
+      - NETWORKS=1        # Network list, required to resolve routing networks
+      - PING=1            # Health check capability
+      - POST=0            # No writes at all: this is what makes the proxy read-only
+      - TZ=Europe/Berlin
+      - VERSION=1         # Docker API version negotiation
+    # Same probe as the write proxy above: /_ping proves liveness, not that POST=0
+    # and the grants are still correct.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:2375/_ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - smoonet
+
+  mongo:
+    # Untagged, and unpinned for the same reason as `dockerproxy` above - see the
+    # comment there and docs/image-pinning.md. A tagless reference carries no
+    # version for Renovate to track, so it is also mechanically unreachable.
+    image: mongo
+    container_name: komodo-mongo-db
+    labels:
+      - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    restart: unless-stopped
+    # ports:
+    #   - 27017:27017
+    volumes:
+      - /mnt/user/appdata/komodo/mongo-config:/data/db
+      - /mnt/user/appdata/komodo/mongo-db:/data/configdb
+    # Health probe. Deviation from the HTTP default: this is a database with no HTTP
+    # surface, so the native client answers instead, mirroring pg_isready on the
+    # Postgres services. mongosh starts a Node process per probe, which is the most
+    # expensive check in this repository - accepted, the image ships no lighter one.
+    # healthcheck: image-provided, mongosh --quiet --eval. The MongoDB image ships no HTTP
+    # client and its own shell answers instead.
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand({ping:1})\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DB_PASSWORD}
+    networks:
+      - smoonet
+
+  core:
+    # The tag comes from the environment, so there is no literal reference to pin
+    # and Renovate's extractor sees a variable rather than a version. Unpinned for
+    # that reason on top of the stack exemption - see docs/image-pinning.md.
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    container_name: komodo-core
+    init: true
+    labels:
+      # Prevent Komodo from stopping with StopAllContainers
+      - komodo.skip=true
+      ## Start Traefik Config
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.rule=Host(`${KOMODO_TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.service=${KOMODO_SERVICE}
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.tls=true
+      - traefik.http.routers.${KOMODO_SERVICE}-internal.tls.certresolver=cloudflare
+      # # External
+      - traefik.http.routers.${KOMODO_SERVICE}-external.rule=Host(`${KOMODO_TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${KOMODO_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${KOMODO_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${KOMODO_SERVICE}-external.priority=10
+      - traefik.http.routers.${KOMODO_SERVICE}-external.service=${KOMODO_SERVICE}
+      - traefik.http.routers.${KOMODO_SERVICE}-external.tls=true
+      - traefik.http.routers.${KOMODO_SERVICE}-external.tls.certresolver=cloudflare
+      # # HTTP-Header
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.rule=Host(`${KOMODO_TRAEFIK_EXTERNAL_URL}`) && Header(`${X_SPECIAL_HEADER}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.service=${KOMODO_SERVICE}
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.tls=true
+      - traefik.http.routers.${KOMODO_SERVICE}-bypass.tls.certresolver=cloudflare
+      # KOMODO_SERVICE port (must match the port Komodo listens on INSIDE the container)
+      - traefik.http.services.${KOMODO_SERVICE}.loadbalancer.server.url=${KOMODO_TRAEFIK_INTERNAL_URL}
+      - traefik.docker.network=smoonet
+      ## End Traefik Config
+      - net.unraid.docker.managed=composeman
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png
+      - net.unraid.docker.webui=${KOMODO_UNRAID_WEBGUI_URL}
+    networks:
+      - smoonet
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - mongo
+      - dockerproxy
+    ports:
+      - 9120:9120
+    # Health probe. Deviation from the wget default: this image ships curl only.
+    # /version is the one endpoint Core answers outside its single-page app - /health
+    # and /api/health are 404 - so it stands in for a readiness endpoint. It proves
+    # the HTTP server is up, not that the database connection behind it is.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9120/version || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - KOMODO_DATABASE_ADDRESS=mongo:27017
+      - KOMODO_DATABASE_USERNAME=${KOMODO_DB_USERNAME}
+      - KOMODO_DATABASE_PASSWORD=${KOMODO_DB_PASSWORD}
+    volumes:
+      ## Store dated backups of the database - https://komo.do/docs/setup/backup
+      - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
+      ## Store sync files on server
+      - /mnt/user/appdata/komodo/syncs:/syncs
+      ## Optionally mount a custom core.config.toml
+      - /mnt/user/appdata/komodo/config:/config
+      # Komodo Core v2 requires the keys directory to be mounted at /config/keys, even if it's empty.
+      - /mnt/user/appdata/komodo/config/keys:/config/keys
+      # Read-only view of the repositories Periphery clones. Core does not need
+      # them to deploy, but the `trigger_procedure` action runs in Core's Deno
+      # runtime and diffs the pulled commits here to decide which stacks changed.
+      # Without it every push sweeps all ~29 stacks.
+      - /mnt/user/appdata/komodo/repos:/etc/komodo/repos:ro
+      ## Allows for systemd Periphery connection at
+      ## "https://host.docker.internal:8120"
+      # extra_hosts:
+      #   - host.docker.internal:host-gateway
+      ## Deploy Periphery container using this block,
+      ## or deploy the Periphery binary with systemd using 
+      ## https://github.com/moghtech/komodo/tree/main/scripts
+  periphery:
+    # The one image in this stack that is digest-pinned. The stack is exempt from
+    # docs/image-pinning.md because this file is not its deploy source, but this
+    # image is built and published from this repository's own account, so the
+    # rule applies to it wherever it is referenced.
+    image: ghcr.io/smoochy/komodo-periphery-sops-age:2@sha256:a06dcb5eaa02fee914f444d27b1b70d0005e3230b0d9adf5b284e98c0a3a3de3
+    container_name: komodo-periphery
+    # Periphery runs as PID 1 and does not reap the children it orphans. Every
+    # container-stats refresh that exceeds its 10s budget logs `Failed to refresh
+    # container stats cache | Command timed out after 10.0s (process group killed)`
+    # and leaves a `<defunct>` behind; under sustained host load that is one every
+    # 30s, which reached 1304 zombies in two days on 2026-09-11 before a restart
+    # cleared them. tini as PID 1 reaps them regardless of whose bug orphaned them.
+    # Reported upstream as moghtech/komodo#1626. `core` above has run this way all
+    # along, which is why only Periphery ever accumulated them.
+    init: true
+    labels:
+      - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/komodo.png
+      - net.unraid.docker.webui=${KOMODO_UNRAID_WEBGUI_URL}
+    restart: unless-stopped
+    env_file: .env
+    # Health probe. The image ships wget, so wget is the client per the convention; the
+    # endpoint is HTTPS with a self-signed certificate, hence --no-check-certificate.
+    # /version is the only path Periphery answers without authentication - /health,
+    # /ping and /api are 404.
+    # healthcheck: --no-check-certificate. Periphery serves its own self-signed
+    # certificate, which the default probe form cannot validate.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-check-certificate --no-verbose --tries=1 --spider https://127.0.0.1:8120/version || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    environment:
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - PERIPHERY_REPO_DIR=/etc/komodo/repos
+      - PERIPHERY_STACK_DIR=/etc/komodo/stacks
+      - PERIPHERY_BUILD_DIR=/etc/komodo/builds
+    volumes:
+      ## Attach the Core / Periphery communication keys
+      - /mnt/user/appdata/komodo/config/keys:/config/keys
+      - /proc:/proc
+      ## Specify the Periphery agent root directory.
+      ## Must be the same inside and outside the container,
+      ## or docker will get confused. See https://github.com/moghtech/komodo/discussions/180.
+      ## Default: /etc/komodo.
+      - ${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}:${PERIPHERY_ROOT_DIRECTORY:-/etc/komodo}
+      - /mnt/user/appdata/komodo/repos:/etc/komodo/repos
+      - /mnt/user/appdata/komodo/stacks:/etc/komodo/stacks
+      - /mnt/user/appdata/komodo/builds:/etc/komodo/builds
+      - /mnt/user/appdata/komodo/root:/root
+      ## The shared script tree the qbittorrent and sabnzbd stacks run from
+      ## (issue #343). The repository resource that mirrors it runs its
+      ## `on_pull` inside this container, so the destination has to be the same
+      ## path here as on the host - without this the mirror writes into the
+      ## container's own filesystem, reports success, and nothing reaches the
+      ## array.
+      - /mnt/user/appdata/qbittorrent/scripts:/mnt/user/appdata/qbittorrent/scripts
+      ## The other destinations scripts/deliver.sh's BUNDLES table installs into.
+      ## Five of the six rows resolved to paths this container never bound, so
+      ## their writes landed in the container's own writable layer instead of
+      ## the array - invisible on the host, gone on recreate, while the run
+      ## still logged "installed" and exited 0; only the qbittorrent row above
+      ## ever actually reached the array. deliver.sh's own lint gate now
+      ## refuses the whole run rather than repeat that silently, so a new
+      ## BUNDLES row needs a matching bind added here too.
+      - /mnt/user/appdata/traefik/scripts/cloudflare_trusted_ips:/mnt/user/appdata/traefik/scripts/cloudflare_trusted_ips
+      - /mnt/user/appdata/traefik/rules:/mnt/user/appdata/traefik/rules
+      - /mnt/user/appdata/uptimekuma/scripts/appdata_backup_maintenance:/mnt/user/appdata/uptimekuma/scripts/appdata_backup_maintenance
+      - /mnt/user/appdata/tautulli/scripts/auto_tag:/mnt/user/appdata/tautulli/scripts/auto_tag
+      - /mnt/user/appdata/radarr/scripts/tools:/mnt/user/appdata/radarr/scripts/tools
+      - /mnt/user/appdata/sonarr/scripts/tools:/mnt/user/appdata/sonarr/scripts/tools
+      - /mnt/user/appdata/sabnzbd/scripts:/mnt/user/appdata/sabnzbd/scripts
+    networks:
+      - smoonet
+
+volumes:
+  # Mongo
+  mongo-data:
+  mongo-config:
+  # Komodo Core v2
+  keys:
+
+
+networks:
+  # Declared external deliberately, although this stack is the one that created
+  # smoonet originally. The network carries an --ip-range of 172.18.128.0/17,
+  # set by hand, which keeps Docker's dynamic allocator away from the seven
+  # addresses pinned below .128.0. An ip-range cannot be expressed here without
+  # Compose taking ownership of the network again, and a Compose-managed network
+  # whose labels
+  # no longer match this file aborts the deploy outright. That deploy only ever
+  # runs while the control plane is already broken, so the failure would land at
+  # the worst possible moment. External means Compose attaches and nothing else:
+  # it never validates the labels and can never recreate the network without the
+  # range.
+  smoonet:
+    external: true
+    name: smoonet

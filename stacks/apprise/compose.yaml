@@ -1,0 +1,83 @@
+services:
+  apprise:
+    container_name: apprise
+    image: ghcr.io/caronc/apprise:v1.5.4@sha256:c5ea17408c10fd84c8fdb05a421114a1a677b16343c274bf9b1a55701b530829
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"
+
+    # Hardened runtime
+    cap_drop:
+      - ALL
+    ports:
+      - "8004:8000"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+    # Network configuration. The address is pinned because the qBittorrent stack's
+    # sorter runs inside a VPN namespace whose resolver is the tunnel's, so Docker
+    # DNS never resolves "apprise" there and the endpoint has to be a literal IP.
+    networks:
+      smoonet:
+        ipv4_address: 172.18.0.7
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=apprise
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/apprise.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+    # Network definition (external if already exists)
+
+    environment:
+      APPRISE_ADMIN: "y"
+      APPRISE_STATEFUL_MODE: simple
+      APPRISE_WORKER_COUNT: "1"
+
+    # Persistent state
+    volumes:
+      - /mnt/user/appdata/apprise/attach:/attach
+      - /mnt/user/appdata/apprise/config:/config
+      - /mnt/user/appdata/apprise/plugin:/plugin
+
+    # Ephemeral runtime and temp files
+    tmpfs:
+      - /tmp
+
+    # Health probe. Deviation from the wget default: this image ships curl but no
+    # wget. /status is the API's own readiness endpoint, so a 200 proves the
+    # notification gateway can accept a payload, not merely that a port is open.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+networks:
+  smoonet:
+    external: true
+    name: smoonet

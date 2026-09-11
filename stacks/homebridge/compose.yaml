@@ -1,0 +1,95 @@
+services:
+  homebridge:
+    container_name: homebridge
+    environment:
+      - HOMEBRIDGE_CONFIG_UI=1
+      - HOMEBRIDGE_CONFIG_UI_PORT=8581
+      - HOST_CONTAINERNAME=homebridge
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TCP_PORT_41808=41808
+      - TCP_PORT_8581=8581
+      - TZ=Europe/Berlin
+      - UMASK=0000
+    # The Homebridge UI on 8581 is the only HTTP surface here and it has no health
+    # endpoint, so the probe falls back to the root path.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8581/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: homebridge/homebridge:2026-09-02@sha256:77c685a40911b3b95448f3550be0c8b94cd7b4e66daecc1cc39a8285be75b245
+    # Keep HomeKit/LAN discovery on br0, but use smoonet for Docker-internal
+    # services like mosquitto. MQTT clients inside Homebridge should target the
+    # broker hostname `mosquitto`, not the host LAN IP.
+    networks:
+      br0:
+        ipv4_address: 192.0.2.4
+        mac_address: 8a:54:d6:d4:03:25
+      smoonet: {}
+    pids_limit: 2048
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/homebridge:/homebridge:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.homebridge.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 24, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.homebridge.http.name=homebridge - homebridge
+      - kuma.homebridge.http.url=https://hb.example.com
+      - kuma.homebridge.http.method=GET
+      - 'kuma.homebridge.http.accepted_statuscodes=["200-299"]'
+      - kuma.homebridge.http.max_redirects=10
+      - kuma.homebridge.http.http_body_encoding=json
+      - kuma.homebridge.http.timeout=4
+      - kuma.homebridge.http.interval=300
+      - kuma.homebridge.http.max_retries=1
+      - kuma.homebridge.http.retry_interval=300
+      - kuma.homebridge.http.resend_interval=0
+      - kuma.homebridge.http.ignore_tls=false
+      - kuma.homebridge.http.expiry_notification=true
+      - kuma.homebridge.http.upside_down=false
+      - 'kuma.homebridge.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=homebridge
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/homebridge/branding/master/logos/homebridge-color-round-stylized.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  br0:
+    external: true
+  smoonet:
+    external: true

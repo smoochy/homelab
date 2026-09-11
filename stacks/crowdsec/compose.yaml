@@ -1,0 +1,343 @@
+services:
+  crowdsec:
+    container_name: crowdsec
+    environment:
+      - BOUNCER_KEY_TRAEFIK=${CROWDSEC_TRAEFIK_BOUNCER_API_KEY}
+      - COLLECTIONS=crowdsecurity/traefik crowdsecurity/http-cve crowdsecurity/whitelist-good-actors
+      - GID=98
+      - HOST_CONTAINERNAME=crowdsec
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      - UID=99
+      # Write-ahead logging for the SQLite state database. Without it a single
+      # writer takes an exclusive lock on the whole file, and CrowdSec holds
+      # more than a dozen connections to it at once - LAPI, metrics flush,
+      # alert flush, decision expiry and machine authentication all contend for
+      # the same lock, which surfaces as continuous "database is locked" errors
+      # and requests that only end when their retry deadline does. The image
+      # entrypoint translates this into db_config.use_wal in config.yaml.
+      - USE_WAL=true
+    # LAPI readiness. A 200 here proves the local API the bouncers talk to is
+    # serving, which is the part of CrowdSec whose silent death is invisible.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: ghcr.io/crowdsecurity/crowdsec:v1.8.1@sha256:0f2523fa61ef507f15d953045cface490cc880670c62f2755ced17524107f71a
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.crowdsec.docker.name=crowdsec - crowdsec
+      - kuma.crowdsec.docker.docker_container=crowdsec
+      - kuma.crowdsec.docker.docker_host=1
+      - kuma.crowdsec.docker.interval=300
+      - kuma.crowdsec.docker.max_retries=1
+      - kuma.crowdsec.docker.retry_interval=300
+      - kuma.crowdsec.docker.resend_interval=0
+      - 'kuma.crowdsec.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "6060:6060/tcp"
+      - "6061:8080/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/crowdsec/:/etc/crowdsec:rw
+      - /mnt/user/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
+      - /mnt/user/appdata/traefik/logs/:/var/log/traefik:rw
+      # The host log directory, not the syslog file alone. Unraid rotates
+      # /var/log/syslog by rename at 1 MB with no copytruncate, and a single-file
+      # bind mount pins the container to the inode it was started with - after the
+      # first rotation it would keep tailing an unlinked file and read nothing
+      # more, without any error. Mounting the directory lets the file datasource
+      # see the replacement appear and re-open it. Read-only: CrowdSec only ever
+      # consumes this.
+      - /var/log:/host-var-log:ro
+  crowdsec-dashboard:
+    container_name: crowdsec-dashboard
+    depends_on:
+      - crowdsec
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - MB_DB_FILE=/data/metabase.db
+      - MGID=98
+      - MUID=99
+      - TZ=Europe/Berlin
+    # healthcheck: deviating start_period. Metabase boots the JVM, then migrates its application database, and only
+    # answers /api/health once both are done - hence the deviating start_period,
+    # measured against this container. Everything else is the house default.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    image: metabase/metabase:v0.63.16.9@sha256:539036fd311440ff6e22ad433914d23a69b2ec0fba3896745706a68f70319490
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "3000:3000/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/crowdsec/dashboard/:/data/:rw
+      - /mnt/user/appdata/crowdsec/data/:/metabase-data/:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 20, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.crowdsec-dashboard.http.name=crowdsec - dashboard
+      - kuma.crowdsec-dashboard.http.url=https://cs.example.com
+      - kuma.crowdsec-dashboard.http.method=GET
+      - 'kuma.crowdsec-dashboard.http.accepted_statuscodes=["200-299"]'
+      - kuma.crowdsec-dashboard.http.max_redirects=10
+      - kuma.crowdsec-dashboard.http.http_body_encoding=json
+      - kuma.crowdsec-dashboard.http.timeout=4
+      - kuma.crowdsec-dashboard.http.interval=300
+      - kuma.crowdsec-dashboard.http.max_retries=1
+      - kuma.crowdsec-dashboard.http.retry_interval=300
+      - kuma.crowdsec-dashboard.http.resend_interval=0
+      - kuma.crowdsec-dashboard.http.ignore_tls=false
+      - kuma.crowdsec-dashboard.http.expiry_notification=true
+      - kuma.crowdsec-dashboard.http.upside_down=false
+      - 'kuma.crowdsec-dashboard.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+  # Reaper for the per-IP bouncer rows the Traefik plugin leaves behind. Since
+  # CrowdSec 1.6.4 the LAPI duplicates a bouncer row per source IP that presents
+  # the same API key, so stream mode can track a `last_pull` per instance
+  # (crowdsecurity/crowdsec#3255). Every Traefik recreate lands on a fresh
+  # `smoonet` address and mints another `traefik-bouncer@<ip>` row flagged
+  # `auto_created`, and nothing ever removes it - 24 of them had piled up by
+  # 2026-08-27 (issue #1741). There is no LAPI option to turn the duplication
+  # off, and `cscli bouncers prune` is not usable unattended: it filters on age
+  # alone, so it also deletes `TRAEFIK` - the parent key, which by design never
+  # pulls itself - and `traefik-manager`, which only pulls while someone has its
+  # UI panel open. Both were deleted by exactly that command once already. This
+  # loop deletes only rows whose name carries the plugin's own `@<ip>` suffix.
+  crowdsec-bouncer-prune:
+    configs:
+      - source: bouncer_prune
+        target: /prune.sh
+    container_name: crowdsec-bouncer-prune
+    depends_on:
+      - crowdsec
+    entrypoint: ["/bin/sh", "/prune.sh"]
+    environment:
+      - HOST_CONTAINERNAME=crowdsec-bouncer-prune
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      # A round per week, deleting rows that stopped pulling 30 days ago. The
+      # live bouncer pulls every minute, so the threshold only has to outlast a
+      # long Traefik outage, not a Traefik restart.
+      - PRUNE_INTERVAL_SECONDS=604800
+      - PRUNE_MAX_AGE_DAYS=30
+      - TZ=Europe/Berlin
+    # healthcheck: none. This container sleeps for a week at a time, so any probe
+    # would report on the sleep rather than on the last round. A failed round is
+    # visible in the log store, and a missed one costs nothing but a few stale rows.
+    image: ghcr.io/crowdsecurity/crowdsec:v1.8.1@sha256:0f2523fa61ef507f15d953045cface490cc880670c62f2755ced17524107f71a
+    labels:
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    networks:
+      - smoonet
+    pids_limit: 512
+    restart: unless-stopped
+    # `cscli bouncers` talks to the state database directly rather than through
+    # the API, so this needs the same two mounts the LAPI itself has. WAL is on
+    # (see USE_WAL above), which is what makes a second writer on the file safe.
+    volumes:
+      - /mnt/user/appdata/crowdsec/:/etc/crowdsec:rw
+      - /mnt/user/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
+  crowdsec-manager:
+    container_name: crowdsec-manager
+    depends_on:
+      - crowdsec
+    environment:
+      - CROWDSEC_METRICS_URL=http://crowdsec:6060/metrics
+      # Stays on the write proxy: the access log shows this container issuing
+      # POST /containers/<id>/exec and POST /exec/<id>/start, which the read-only
+      # proxy answers with 403.
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - ENVIRONMENT=production
+      - HOST_CONTAINERNAME=${CROWDSEC_MANAGER_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PORT=8080
+      - TRAEFIK_CONTAINER_NAME=traefik
+      - TRAEFIK_DYNAMIC_CONFIG=/etc/traefik/dynamic.yml
+      - TRAEFIK_STATIC_CONFIG=/etc/traefik/traefik.yml
+      - TZ=Europe/Berlin
+    # The image bakes `curl -f http://localhost:${PORT:-8080}/health`. Declared here
+    # in the house wget form against the same endpoint, so the probe lives in the
+    # repository and an image bump cannot change it unnoticed.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: ghcr.io/hhftechnology/crowdsec_manager:2.4.1@sha256:033dd76360e5f5da01b21084921e1f82cef226ebc53e33f77f4128da8d01be2e
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.rule=Host(`${CROWDSEC_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.service=${CROWDSEC_MANAGER_SERVICE}
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.priority=10
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.rule=Host(`${CROWDSEC_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.service=${CROWDSEC_MANAGER_SERVICE}
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.rule=Host(`${CROWDSEC_MANAGER_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.service=${CROWDSEC_MANAGER_SERVICE}
+      - traefik.http.routers.${CROWDSEC_MANAGER_SERVICE}-bypass.tls=true
+      # Service port (must match the port the manager listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${CROWDSEC_MANAGER_SERVICE}.loadbalancer.server.url=${CROWDSEC_MANAGER_INTERNAL_URL}
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+      - net.unraid.docker.webui=${CROWDSEC_MANAGER_UNRAID_WEBGUI_URL}
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "6062:8080/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/crowdsec/compose.yaml:/app/docker-compose.yml:ro
+      - /mnt/user/appdata/crowdsec/manager/backups/:/app/backups:rw
+      - /mnt/user/appdata/crowdsec/manager/config/:/app/config:rw
+      - /mnt/user/appdata/crowdsec/manager/data/:/app/data:rw
+      - /mnt/user/appdata/traefik/dynamic.yml:/etc/traefik/dynamic.yml:rw
+      - /mnt/user/appdata/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+  crowdsec-firewall-bouncer:
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    container_name: crowdsec-firewall-bouncer
+    depends_on:
+      - crowdsec
+    environment:
+      - API_KEY=${CROWDSEC_FIREWALL_BOUNCER_API_KEY}
+      - API_URL=http://crowdsec:8080
+      - HOST_CONTAINERNAME=crowdsec-firewall-bouncer
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    # healthcheck: none. The bouncer runs on the host network and exposes no
+    # HTTP or local socket of its own, so every probe available here would answer for
+    # something other than the bouncer - an always-green check is worse than none.
+    # Its liveness is covered by the stack-health poller instead.
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.36@sha256:4a7bd2e3eda81f9382f6e8571cebff7192e9b300e99d1cd5993b3b03580a0cb8
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.crowdsec-firewall-bouncer.docker.name=crowdsec - firewall-bouncer
+      - kuma.crowdsec-firewall-bouncer.docker.docker_container=crowdsec-firewall-bouncer
+      - kuma.crowdsec-firewall-bouncer.docker.docker_host=1
+      - kuma.crowdsec-firewall-bouncer.docker.interval=300
+      - kuma.crowdsec-firewall-bouncer.docker.max_retries=1
+      - kuma.crowdsec-firewall-bouncer.docker.retry_interval=300
+      - kuma.crowdsec-firewall-bouncer.docker.resend_interval=0
+      - 'kuma.crowdsec-firewall-bouncer.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    network_mode: host
+    pids_limit: 2048
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /mnt/user/appdata/crowdsec/bouncers/:/config:rw
+configs:
+  # The reaper loop, kept here rather than in a mounted script file so the stack
+  # stays deployable from the repository alone.
+  bouncer_prune:
+    content: |
+      #!/bin/sh
+      # Delete the auto-created per-IP rows of the Traefik bouncer plugin once they
+      # have stopped pulling. Everything else in the roster is left alone.
+      set -eu
+
+      MAX_AGE_DAYS="$${PRUNE_MAX_AGE_DAYS:-30}"
+      INTERVAL="$${PRUNE_INTERVAL_SECONDS:-604800}"
+      # The column layout this parser assumes. `cscli bouncers list -o raw` has
+      # gained fields across CrowdSec releases, and a shifted column would make the
+      # date test read the wrong field - which is how a name that never pulls ends
+      # up looking stale. A round whose header does not match is skipped, not guessed.
+      HEADER='name,ip,revoked,last_pull,type,version,auth_type'
+
+      while :; do
+        cutoff=$$(date -u -d @$$(( $$(date +%s) - MAX_AGE_DAYS * 86400 )) +%Y-%m-%dT%H:%M:%SZ)
+        roster=$$(cscli bouncers list -o raw)
+
+        if [ "$$(printf '%s\n' "$$roster" | head -1)" != "$$HEADER" ]; then
+          echo "prune: unexpected 'cscli bouncers list -o raw' header, skipping round" >&2
+          printf '%s\n' "$$roster" | head -1 >&2
+        else
+          printf '%s\n' "$$roster" \
+            | awk -F, -v c="$$cutoff" 'NR > 1 && $$1 ~ /^traefik-bouncer@/ && $$4 != "" && $$4 < c { print $$1 }' \
+            | while read -r name; do
+                cscli bouncers delete "$$name" && echo "prune: deleted $$name, last pull before $$cutoff"
+              done
+        fi
+
+        sleep "$$INTERVAL"
+      done
+
+networks:
+  smoonet:
+    external: true

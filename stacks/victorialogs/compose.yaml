@@ -1,0 +1,356 @@
+services:
+  # Fills the probe-bin volume with a static busybox and exits. VictoriaLogs is distroless
+  # and ships no HTTP client, so its probe runs that binary out of the read-only mount.
+  probe-busybox:
+    container_name: victorialogs-probe-busybox
+    # healthcheck: none, one-shot init container. It copies the binary and exits 0, so
+    # there is nothing left running to probe.
+    image: busybox:1.38.0-musl@sha256:32b5cdad7cce41dfd53d0ae06baebcf8357a147ee7694dc706911c373bc30c37
+    command: ["cp", "/bin/busybox", "/probe/busybox"]
+    restart: "no"
+    volumes:
+      - probe-bin:/probe:rw
+
+  victorialogs:
+    container_name: victorialogs
+    depends_on:
+      probe-busybox:
+        condition: service_completed_successfully
+    # VictoriaLogs serves /health but ships neither an HTTP client nor a shell, so the
+    # default `wget --spider` form runs from the static busybox mounted at /probe.
+    # `127.0.0.1` rather than `localhost`: BusyBox wget prefers ::1, which fails against
+    # an IPv4-only listener.
+    healthcheck:
+      test: ["CMD", "/probe/busybox", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9428/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: victoriametrics/victoria-logs:v1.52.0@sha256:47b820890d64c4575a2a0a46415dcd8a4fd59a0f1fcd6a377693d7aea639442e
+    restart: unless-stopped
+
+    # Configuration is CLI flags only - VictoriaLogs reads no environment variables for these.
+    command:
+      - -storageDataPath=/victoria-logs-data
+      - -retentionPeriod=90d # 90 days of fleet history
+      - -retention.maxDiskSpaceUsageBytes=20GiB # independent fuse against runaway growth
+      - -syslog.listenAddr.udp=0.0.0.0:514 # container-side bind; the loopback restriction lives on the host publish
+      - -syslog.tenantID.udp=0:0
+      - -loggerTimezone=Europe/Berlin
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      # Host port 1514, not 514: Unraid's own rsyslogd already holds 0.0.0.0:514/udp, so the
+      # loopback bind is refused as "address already in use". The daemon's syslog-address
+      # therefore has to read udp://127.0.0.1:1514.
+      # Syslog ingest from this host's Docker daemon only. This mapping relies on Docker's
+      # userland proxy listening on host loopback; with --userland-proxy=false it falls back
+      # to iptables DNAT, which needs route_localnet=1 for host-generated traffic. Verify
+      # that before the daemon's default log driver is switched to syslog, or logs vanish
+      # silently after the restart.
+      - "127.0.0.1:1514:514/udp"
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/victorialogs:/victoria-logs-data:rw # cache-only share, the mover never touches it
+      - probe-bin:/probe:ro # static busybox for the healthcheck, filled by probe-busybox
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # This container never ships its own output into itself. Once the daemon default
+    # log driver becomes syslog, that would be a bootstrap loop.
+    logging:
+      driver: json-file
+      # Explicit, because the rotation bound these three inherited came from Unraid's
+      # `--log-opt max-size/--log-opt max-file` dockerd flags, and those have to go
+      # before a global `log-opts` in daemon.json is accepted at all (see #978).
+      # Without this they would grow unbounded on the 50 G Docker loop image.
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+    # No healthcheck, deliberately. The image is distroless from v1.52.0 on: it carries
+    # no shell, no wget and no curl, so neither sanctioned probe can run inside it, and
+    # the only probes that would run here answer for something other than VictoriaLogs.
+    # The readiness signal is /health on 9428, reachable from outside the container.
+
+    # Resource limits
+    pids_limit: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal - this stack has no external and no header-bypass router by decision
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # Service port (VictoriaLogs HTTP and VMUI on 9428)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=victorialogs
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/victoriametrics.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+  # Evaluation of the log store, decided in issue #983 and built in #1045. It
+  # rides in this stack rather than its own so the query path stays one hop and
+  # one file. The cost is real and accepted: a rule edit redeploys the log store
+  # with it, and rules are edited more often than the store is. That redeploy
+  # only recreates this container because of the config-rev label further down;
+  # Compose does not hash the config content itself (#1738).
+  vmalert:
+    container_name: vmalert
+    image: victoriametrics/vmalert:v1.151.0@sha256:e519f14c31f4d68015702e684a0fc3f1b4e559aa985d8f4462768f07f55b05c9
+    restart: unless-stopped
+    depends_on:
+      - victorialogs
+
+    command:
+      # Base address only. vmalert appends the LogsQL query path itself for a
+      # `vlogs` rule group; a hand-appended /select/logsql gives a 404.
+      - -datasource.url=http://victorialogs:9428
+      - -notifier.url=http://alertmanager:9093
+      - -rule=/etc/vmalert/rules.yml
+      # Fail-safe: a group added later without `type:` is still read as LogsQL
+      # rather than silently parsed as PromQL against a store that has none.
+      - -rule.defaultRuleType=vlogs
+      # VictoriaLogs has no intentional search delay, so this only covers
+      # network and ingest time.
+      - -rule.evalDelay=5s
+      - -httpListenAddr=:8880
+      - -loggerTimezone=Europe/Berlin
+
+    networks:
+      smoonet:
+
+    configs:
+      - source: vmalert_rules
+        target: /etc/vmalert/rules.yml
+
+    environment:
+      - HOST_CONTAINERNAME=vmalert
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Same reason as victorialogs itself: this container must never ship its own
+    # output into the store it queries, loudest exactly during a crash loop.
+    logging:
+      driver: json-file
+      # Explicit, because the rotation bound these three inherited came from Unraid's
+      # `--log-opt max-size/--log-opt max-file` dockerd flags, and those have to go
+      # before a global `log-opts` in daemon.json is accepted at all (see #978).
+      # Without this they would grow unbounded on the 50 G Docker loop image.
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8880/health || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    pids_limit: 2048
+
+    labels:
+      # The hash of the vmalert_rules content below, maintained by
+      # scripts/config-rev.sh. Compose leaves the content of a top-level config
+      # out of the service hash, so without this label a rules edit deploys
+      # green and leaves the container mounting the old file (#1738). Never
+      # edited by hand; `scripts/config-rev.sh` writes it and CI checks it.
+      - com.smoochy.config-rev.vmalert_rules=867e3e14009b
+      - com.smoochy.komodo.restore_stack=victorialogs
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/victoriametrics.png
+
+  alertmanager:
+    container_name: alertmanager
+    image: prom/alertmanager:v0.34.0@sha256:690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d
+    restart: unless-stopped
+
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+      - --log.format=json
+
+    networks:
+      smoonet:
+
+    configs:
+      - source: alertmanager_config
+        target: /etc/alertmanager/alertmanager.yml
+
+    # The image has no PUID handling and runs as nobody, which cannot write into
+    # an appdata directory owned by the Unraid share user - the same reason the
+    # thelounge and tqm services carry this line. Without it the container comes
+    # up healthy and only its 15-minute maintenance tick fails, so the dedup
+    # state this volume exists for is silently never written.
+    user: "99:100"
+
+    volumes:
+      # The nflog behind the 6h repeat suppression. Without a volume every push
+      # to this file wipes the dedup state and re-notifies whatever is firing.
+      - /mnt/user/appdata/alertmanager:/alertmanager:rw
+
+    environment:
+      - HOST_CONTAINERNAME=alertmanager
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    logging:
+      driver: json-file
+      # Explicit, because the rotation bound these three inherited came from Unraid's
+      # `--log-opt max-size/--log-opt max-file` dockerd flags, and those have to go
+      # before a global `log-opts` in daemon.json is accepted at all (see #978).
+      # Without this they would grow unbounded on the 50 G Docker loop image.
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:9093/-/healthy || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    pids_limit: 2048
+
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal only, like the store itself. The UI exists for one job the
+      # # notification path cannot do on its own: silencing an alert.
+      - traefik.http.routers.alertmanager-internal.entrypoints=websecure-internal
+      - traefik.http.routers.alertmanager-internal.middlewares=chain-internal@file
+      - traefik.http.routers.alertmanager-internal.priority=5000
+      - traefik.http.routers.alertmanager-internal.rule=Host(`${ALERTMANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.alertmanager-internal.service=alertmanager
+      - traefik.http.routers.alertmanager-internal.tls=true
+      - traefik.docker.network=smoonet
+      - traefik.http.services.alertmanager.loadbalancer.server.url=${ALERTMANAGER_INTERNAL_URL}
+      ## End Traefik Config
+      # Same marker as vmalert carries, for the alertmanager_config content
+      # below. See scripts/config-rev.sh and #1738.
+      - com.smoochy.config-rev.alertmanager_config=2d81504c6a85
+      - com.smoochy.komodo.restore_stack=victorialogs
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/prometheus.png
+
+configs:
+  # Komodo ships compose.yaml and nothing else (established in #1024), so both
+  # configuration files live inline here rather than as sibling files that would
+  # never reach the host.
+  vmalert_rules:
+    content: |
+      groups:
+        - name: qbittorrent-riders
+          type: vlogs
+          # vmalert appends `_time:15m` to every expression in this group from
+          # the interval, so no expression carries its own time filter.
+          interval: 15m
+          rules:
+            # Only the riders are ours, so `error` only has a defined meaning
+            # here (#983). The container constraint is what draws that boundary
+            # - #980's fleetwide level pattern is deliberately tolerant and
+            # would let a third party's error-shaped word through.
+            #
+            # The list was the first five riders until #1987, which found the
+            # seven added since - season-scan among them - alerting nowhere at
+            # all, so a rider that was about to be unparked had no channel a
+            # human would see. Every rider built from the watcher image writes
+            # the same JSON line shape, so each new one belongs here.
+            - alert: RiderError
+              expr: >-
+                app_name:in("qbittorrent.qbittorrent-sorter", "qbittorrent.qbittorrent-tqm", "qbittorrent.qbittorrent-watcher", "qbittorrent.qbittorrent-irc-watch", "qbittorrent.qbittorrent-season-scan", "qbittorrent.qbittorrent-port-check", "qbittorrent.qbittorrent-cold-check", "qbittorrent.qbittorrent-cold-mover", "qbittorrent.qbittorrent-filer", "qbittorrent.qbittorrent-bandwidth-share")
+                | unpack_json fields (level, event, component)
+                | filter level:=error
+                | stats by (event, component) count() as n
+                | filter n:>0
+              # The expression's window is exactly one evaluation interval, so a
+              # single sporadic error matches for one eval and is gone at the
+              # next one. Without this, every isolated log line produced a
+              # FIRING and then a RESOLVED notification 15 minutes later, and an
+              # error that recurs every few evaluations ping-ponged forever.
+              # Holding the alert firing for an hour past its last match folds
+              # those repeats into one alert, which `repeat_interval: 6h` then
+              # caps at one message.
+              keep_firing_for: 1h
+              annotations:
+                # `$$` throughout: compose interpolates this inline config
+                # before the container ever sees it, so a single `$` would be
+                # eaten and the alert text would arrive empty.
+                summary: '{{ $$labels.component }}: {{ $$labels.event }}'
+                description: >-
+                  {{ $$labels.component }} logged {{ $$labels.event }} at error level
+                  {{ $$value }} time(s) in the last 15 minutes.
+            # Two warn events that mean the same as an error to a human, named
+            # one by one rather than by level (#983).
+            - alert: RiderWarnEvent
+              expr: >-
+                app_name:in("qbittorrent.qbittorrent-sorter", "qbittorrent.qbittorrent-tqm", "qbittorrent.qbittorrent-watcher", "qbittorrent.qbittorrent-irc-watch", "qbittorrent.qbittorrent-season-scan", "qbittorrent.qbittorrent-port-check", "qbittorrent.qbittorrent-cold-check", "qbittorrent.qbittorrent-cold-mover", "qbittorrent.qbittorrent-filer", "qbittorrent.qbittorrent-bandwidth-share")
+                | unpack_json fields (level, event, component)
+                | filter event:in("space.emergency", "repair.gave_up")
+                | stats by (event, component) count() as n
+                | filter n:>0
+              # Same flapping reason as RiderError above.
+              keep_firing_for: 1h
+              annotations:
+                summary: '{{ $$labels.component }}: {{ $$labels.event }}'
+                description: >-
+                  {{ $$labels.component }} logged {{ $$labels.event }}
+                  {{ $$value }} time(s) in the last 15 minutes.
+
+  alertmanager_config:
+    content: |
+      route:
+        # Both labels, never the event alone: run.failed and cycle.failed exist
+        # in more than one rider, and grouping on the event id would make them
+        # one alert identity (#983).
+        group_by: ['event', 'component']
+        # Deliberate rather than defaulted: a rider's rules evaluate every 15
+        # minutes, so a short group_wait costs nothing and a long one only
+        # delays the first message.
+        group_wait: 30s
+        group_interval: 5m
+        repeat_interval: 6h
+        receiver: discord
+      receivers:
+        - name: discord
+          discord_configs:
+            - webhook_url: ${DISCORD_LOG_ALERT_WEBHOOK}
+              # A resolve here only means "no further matching log line in the
+              # last hour", never "the rider recovered", so the message carried
+              # no information and doubled the channel's volume. Recovery is
+              # read from the absence of new FIRING messages instead.
+              send_resolved: false
+              # Terse on purpose: Discord hard-caps a message at 2000 characters
+              # and a batch of firing riders would otherwise run into it.
+              title: '{{ .Status | toUpper }} {{ .CommonLabels.component }} {{ .CommonLabels.event }}'
+              message: >-
+                {{ range .Alerts }}{{ .Annotations.description }}
+                {{ end }}
+
+volumes:
+  probe-bin:
+
+networks:
+  smoonet:
+    external: true
+    name: smoonet

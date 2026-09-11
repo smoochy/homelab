@@ -1,0 +1,54 @@
+services:
+  caddy:
+    command: caddy docker-proxy
+    container_name: caddy
+    environment:
+      - CADDY_DOCKER_CADDYFILE_PATH=/etc/caddy/Caddyfile # Caddyfile für externe Dienste
+      - CADDY_INGRESS_NETWORKS=smoonet # caddy-docker-proxy: Netzwerk für Routing
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - DOCKER_HOST=tcp://dockerproxy-ro:2375 # Docker integration, read-only proxy
+      - HOST_CONTAINERNAME=caddy
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    # The admin API on 2019 is the only endpoint that answers without a configured site,
+    # so /config/ is the readiness signal here: it returns the live configuration once
+    # caddy-docker-proxy has generated and loaded it.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:2019/config/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.4@sha256:7937ad48e260fea5d47fe8150a8cbd9f9e6b67855dbc1810bf7adf3911636495
+    restart: unless-stopped
+    # Caddy Status-Seite unter caddy.example.com
+    labels:
+      - caddy_1.respond=200
+      - caddy_1.tls.dns=cloudflare {env.CLOUDFLARE_API_TOKEN}
+      - caddy_1.tls.resolvers=1.1.1.1 8.8.8.8
+      - caddy_1=${TRAEFIK_EXTERNAL_URL}
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/caddy.png
+    # Network
+    networks:
+      smoonet:
+    ports:
+      - "443:444"
+      - "443:444/udp"
+      - "80:81"
+      - "2019:2019"
+    volumes:
+      - /mnt/user/appdata/caddy/config:/config
+      - /mnt/user/appdata/caddy/data:/data
+      - /mnt/user/appdata/caddy/site:/srv
+      - /mnt/user/appdata/komodo/repos/homelab/stacks/caddy/Caddyfile:/etc/caddy/Caddyfile
+networks:
+  smoonet:
+    external: true
+volumes:
+  caddy_config:
+  caddy_data:

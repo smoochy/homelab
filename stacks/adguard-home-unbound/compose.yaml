@@ -1,0 +1,219 @@
+services:
+  adguard-home-sync:
+    container_name: adguard-home-sync
+    depends_on:
+      - adguard-home-unbound
+    image: ghcr.io/linuxserver/adguardhome-sync:v0.9.2-ls167@sha256:e6f2afd2fe8d2be257163bc2d99a8fe7d177044b1f4e5b260e425a27b0dbefa6
+    restart: unless-stopped
+
+    # Network config
+    # Keep sync API traffic on smoonet. Bridge-network containers cannot
+    # reliably reach AdGuard's br0/macvlan IP (192.0.2.3), so the sync YAML
+    # should target http://adguard-home-unbound for the local replica API.
+    networks:
+      smoonet: {}
+    # Ports
+    ports:
+      - "8083:8080" # UI / API [web:6]
+      - "9105:8080" # Same container port, different external port (Prometheus etc.)
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/adguard/adguard-home-sync:/config # Contains adguardhome-sync.yaml [web:6][web:14]
+    # Environment variables
+    environment:
+      - CONFIGFILE=/config/adguard-home-sync.yaml
+      - HOST_CONTAINERNAME=adguard-home-sync
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TZ=Europe/Berlin
+      - UMASK=022
+
+    # Health probe against the sync service's own readiness endpoint.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits (Compose style)
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+
+    # Unraid labels
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.rule=Host(`${ADGUARD_HOME_SYNC_EXTERNAL_URL}`)
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.service=${ADGUARD_HOME_SYNC_SERVICE}
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.priority=10
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.rule=Host(`${ADGUARD_HOME_SYNC_EXTERNAL_URL}`)
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.service=${ADGUARD_HOME_SYNC_SERVICE}
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.rule=Host(`${ADGUARD_HOME_SYNC_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.service=${ADGUARD_HOME_SYNC_SERVICE}
+      - traefik.http.routers.${ADGUARD_HOME_SYNC_SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${ADGUARD_HOME_SYNC_SERVICE}.loadbalancer.server.url=${ADGUARD_HOME_SYNC_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 42, migration wave 3a. This is the one http monitor of the twenty that really
+      # needs basic auth: #1809 measured 401 without it, and with a password of its own
+      # rather than the one the other monitors carried as a leftover. The password is
+      # interpolated from this stack's SOPS-encrypted .env per #1794; the user is a
+      # literal. The monitor prefix is the stack directory, adguard-home-unbound, not the
+      # compose project adguard-home, so it matches the dns monitors that already use it.
+      - kuma.adguard-home-sync.http.name=adguard-home-unbound - adguard-home-sync
+      - kuma.adguard-home-sync.http.url=https://adghsync.example.com
+      - kuma.adguard-home-sync.http.method=GET
+      - 'kuma.adguard-home-sync.http.accepted_statuscodes=["200-299"]'
+      - kuma.adguard-home-sync.http.max_redirects=10
+      - kuma.adguard-home-sync.http.http_body_encoding=json
+      - kuma.adguard-home-sync.http.timeout=4
+      - kuma.adguard-home-sync.http.interval=300
+      - kuma.adguard-home-sync.http.max_retries=1
+      - kuma.adguard-home-sync.http.retry_interval=300
+      - kuma.adguard-home-sync.http.resend_interval=0
+      - kuma.adguard-home-sync.http.ignore_tls=false
+      - kuma.adguard-home-sync.http.expiry_notification=true
+      - kuma.adguard-home-sync.http.upside_down=false
+      - kuma.adguard-home-sync.http.authMethod=basic
+      - kuma.adguard-home-sync.http.basic_auth_user=smoochy
+      - kuma.adguard-home-sync.http.basic_auth_pass=${KUMA_BASIC_AUTH_PASS}
+      - 'kuma.adguard-home-sync.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=adguard-home
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/linuxserver/docker-templates/master/linuxserver.io/img/linuxserver-ls-logo.png
+      - net.unraid.docker.webui=${ADGUARD_HOME_SYNC_UNRAID_WEBGUI_URL}
+  adguard-home-unbound:
+    container_name: adguard-home-unbound
+    image: ghcr.io/mainfrezzer/adguardhome:v0.107.79@sha256:664094ce269471004fb10b02e66fd90ef4839c710989534f239b664135150473
+    restart: unless-stopped
+
+    # Network config (macvlan/br0 mit fester IP)
+    # The smoonet address is static for the same reason traefik (.52) and
+    # uptime-kuma (.53) are: br0 isolation keeps bridge containers from
+    # reaching 192.0.2.3, so anything on smoonet that has to query this
+    # resolver - the Uptime Kuma DNS monitors above all - has to address it
+    # here. .54 sits below smoonet's dynamic IPAM range 172.18.128.0/17.
+    # AdGuard binds DNS on 0.0.0.0, so it answers on this interface too.
+    networks:
+      br0:
+        ipv4_address: 192.0.2.3
+        mac_address: ae:81:a9:a1:86:fc
+      smoonet:
+        ipv4_address: 172.18.0.54
+    # Environment variables
+    environment:
+      - DNSSEC_ENABLE=0
+      - HOST_CONTAINERNAME=adguard-home-unbound
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PROVIDE_CONFIG=yes
+      - TCP_PORT_3000=3000
+      - TCP_PORT_53=53
+      - TCP_PORT_80=80
+      - TZ=Europe/Berlin
+      - UDP_PORT_53=53
+
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/adguard/config:/opt/adguardhome/conf
+      - /mnt/user/appdata/adguard/workingdir:/opt/adguardhome/work
+
+    # Health probe. Two deviations, both measured on the live container:
+    # - The probe is HTTP, not DNS. A `nslookup` against 127.0.0.1 would be the
+    #   truer signal, but this image's BusyBox nslookup exits 0 even when the
+    #   server it queried is dead, which is an always-green check.
+    # - The target is /login.html rather than the /control API, because every
+    #   /control path answers 401 without credentials and would fail the probe.
+    #   localhost resolves to ::1 here, so the probe uses the literal 127.0.0.1.
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/login.html || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+
+    # Unraid Labels
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 9, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists. The name follows the adguard scheme
+      # decided in #1861: the two resolvers are told apart by host, 192.0.2.2 is Raspy and
+      # 192.0.2.3 is storage-host, so this monitor is adguard - storage-host.
+      - kuma.adguard-home-unbound.http.name=adguard - storage-host
+      - kuma.adguard-home-unbound.http.url=https://adguard2.example.com
+      - kuma.adguard-home-unbound.http.method=GET
+      - 'kuma.adguard-home-unbound.http.accepted_statuscodes=["200-299"]'
+      - kuma.adguard-home-unbound.http.max_redirects=10
+      - kuma.adguard-home-unbound.http.http_body_encoding=json
+      - kuma.adguard-home-unbound.http.timeout=4
+      - kuma.adguard-home-unbound.http.interval=300
+      - kuma.adguard-home-unbound.http.max_retries=1
+      - kuma.adguard-home-unbound.http.retry_interval=300
+      - kuma.adguard-home-unbound.http.resend_interval=0
+      - kuma.adguard-home-unbound.http.ignore_tls=false
+      - kuma.adguard-home-unbound.http.expiry_notification=true
+      - kuma.adguard-home-unbound.http.upside_down=false
+      - 'kuma.adguard-home-unbound.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=adguard-home
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/Mainfrezzer/UnRaid-Templates/main/icon/adguard.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  br0:
+    external: true
+    name: br0
+  smoonet:
+    external: true
+    name: smoonet

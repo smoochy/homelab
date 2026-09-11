@@ -1,0 +1,93 @@
+services:
+  plex:
+    container_name: plex
+    # /identity is the only Plex route that answers without a token, so it is the
+    # readiness signal here. curl rather than wget because this image ships no wget.
+    # This replaces the inherited `disable: true`, which only mirrored the old
+    # `--no-healthcheck` run flag and left the container with no signal at all.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:32400/identity || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: ghcr.io/linuxserver/plex:1.43.4.10903-e5521bd8c-ls324@sha256:1f6f97d76e7bdb013789e94c838f2d9133b01ee4b2d4194148e492c4e4f12d90
+    restart: unless-stopped
+    # Network (macvlan/br0 with static IP + smoonet for internal service reachability)
+    networks:
+      br0:
+        ipv4_address: 192.0.2.103
+        mac_address: ea:fa:4e:de:c5:da
+      smoonet: {}
+
+    # Volumes
+    tmpfs:
+      - /tmp/plex:size=20000000000
+    volumes:
+      - /mnt/user/appdata/Plex-Media-Server:/config:rw # Plex config/DB [web:68]
+      - /mnt/user/data/Plex/:/data/Plex:rw # Media libraries
+      - /tmp/plex/:/transcode:rw # Transcode temp
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=plex
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PLEX_CLAIM=${PLEX_CLAIM} # Replace with your actual claim token from https://www.plex.tv/claim/
+      - PLEX_GID=100
+      - PLEX_UID=99
+      - TZ=Europe/Berlin
+      - VERSION=plexpass # Plex Pass required
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+      # stacks/autokuma/README.md for why docker_host and notification_id_list carry
+      # Kuma's numeric ids and why every field is written out.
+      - kuma.plex.docker.name=plex - plex
+      - kuma.plex.docker.docker_container=plex
+      - kuma.plex.docker.docker_host=1
+      - kuma.plex.docker.interval=300
+      - kuma.plex.docker.max_retries=1
+      - kuma.plex.docker.retry_interval=300
+      - kuma.plex.docker.resend_interval=0
+      - 'kuma.plex.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=plex
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/plexinc/pms-docker/master/img/plex-server.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  br0:
+    external: true
+    name: br0
+  smoonet:
+    external: true
+    name: smoonet

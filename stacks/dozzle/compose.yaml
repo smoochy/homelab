@@ -1,0 +1,80 @@
+services:
+  dozzle:
+    container_name: dozzle
+    image: amir20/dozzle:v10.10.0@sha256:2875e3c1f31f2244ee99d6067b53852b30666b3e2fb293d179bc8be94b1da5eb
+    restart: unless-stopped
+    # healthcheck: image-provided, /dozzle healthcheck. The image ships neither wget nor
+    # curl and carries no shell, so the probe runs the binary's own health subcommand in
+    # `CMD` form; it requests http://localhost:8080/healthcheck inside the container.
+    healthcheck:
+      test: ["CMD", "/dozzle", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "8084:8080/tcp" # Dozzle UI
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/dozzle/:/data:rw # Persistent data [web:56]
+    # Environment variables
+    environment:
+      - DOZZLE_AUTH_PROVIDER=simple
+      - DOZZLE_BASE=/
+      # Actions (start/stop/restart) and shell are deliberately off: Dozzle now reads
+      # through the read-only proxy, where both would only ever answer 403. Komodo
+      # offers the same two operations on the write path.
+      - DOZZLE_KEY=${DOZZLE_KEY} # Sensitive auth key
+      - DOZZLE_LEVEL=info
+      - DOZZLE_NO_ANALYTICS=true
+      - DOZZLE_REMOTE_HOST=tcp://dockerproxy-ro:2375 # Docker socket proxy, read-only
+      - DOZZLE_TAILSIZE=300
+      - HOST_CONTAINERNAME=Dozzle
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (Dozzle UI on 8080)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=dozzle
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/dozzle.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  smoonet:
+    external: true

@@ -1,0 +1,146 @@
+services:
+  browserless-v2:
+    container_name: browserless-v2
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - CONCURRENT=10
+      - ENABLE_DEBUGGER=false
+      - HOST_CONTAINERNAME=${BROWSERLESS_V2_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - SCREEN_DEPTH=16
+      - SCREEN_HEIGHT=1080
+      - SCREEN_WIDTH=1920
+      - TIMEOUT=300000
+      - TOKEN=${BROWSERLESS_TOKEN}
+      - TZ=Europe/Berlin
+    # /pressure reports whether the browser pool can still accept work, which is the
+    # readiness signal here. It is token-gated, so the probe reads the image's own
+    # $$TOKEN at runtime rather than carrying the secret in this file.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider \"http://127.0.0.1:3000/pressure?token=$$TOKEN\" || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: ghcr.io/browserless/chromium:v2.56.5@sha256:4911ef6605b850f446b8cff4278ad5bbadeb8bd144f2c1657d76bc6553efd535
+    networks:
+      smoonet:
+    ports:
+      - "3001:3000/tcp"
+    restart: unless-stopped
+    shm_size: 2g
+    ## Start Traefik Config
+    # Komodo restore
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.browserless-v2.docker.name=changedetection-io - browserless-v2
+      - kuma.browserless-v2.docker.docker_container=browserless-v2
+      - kuma.browserless-v2.docker.docker_host=1
+      - kuma.browserless-v2.docker.interval=300
+      - kuma.browserless-v2.docker.max_retries=1
+      - kuma.browserless-v2.docker.retry_interval=300
+      - kuma.browserless-v2.docker.resend_interval=0
+      - 'kuma.browserless-v2.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=browserless-v2
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/browserless.png
+      - net.unraid.docker.webui=${BROWSERLESS_V2_WEBUI_URL}
+  changedetection-io:
+    container_name: changedetection.io
+    # The image ships neither wget nor curl but does ship Python, so the probe is the
+    # fixed `urllib` line from CLAUDE.md with the URL substituted. The app exposes no
+    # health endpoint, so the probe falls back to `/`. `127.0.0.1` rather than
+    # `localhost`, so the probe cannot resolve ::1 in front of an IPv4-only listener.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5000/', timeout=5).status == 200 else 1)\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    depends_on:
+      - browserless-v2
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - BASE_URL=
+      - HOST_CONTAINERNAME=changedetection.io
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - LOGGER_LEVEL=
+      - PLAYWRIGHT_DRIVER_URL=${CHANGEDETECTION_PLAYWRIGHT_DRIVER_URL}
+      - TZ=Europe/Berlin
+    image: dgtlmoon/changedetection.io:0.60.3@sha256:ecacd9fd0c664a786b77daadbbbf51373519b29178a32df3ddbc5c594bc067ed
+    networks:
+      smoonet:
+    ports:
+      - "5000:5000/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/changedetection:/datastore:rw
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 35, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.changedetection-io.http.name=changedetection-io - changedetection-io
+      - kuma.changedetection-io.http.url=https://change.example.com
+      - kuma.changedetection-io.http.method=GET
+      - 'kuma.changedetection-io.http.accepted_statuscodes=["200-299"]'
+      - kuma.changedetection-io.http.max_redirects=10
+      - kuma.changedetection-io.http.http_body_encoding=json
+      - kuma.changedetection-io.http.timeout=4
+      - kuma.changedetection-io.http.interval=300
+      - kuma.changedetection-io.http.max_retries=1
+      - kuma.changedetection-io.http.retry_interval=300
+      - kuma.changedetection-io.http.resend_interval=0
+      - kuma.changedetection-io.http.ignore_tls=false
+      - kuma.changedetection-io.http.expiry_notification=true
+      - kuma.changedetection-io.http.upside_down=false
+      - 'kuma.changedetection-io.http.notification_id_list={"1": true}'
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=browserless-v2
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/changedetection.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  smoonet:
+    external: true

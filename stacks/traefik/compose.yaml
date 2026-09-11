@@ -1,0 +1,493 @@
+services:
+  traefik:
+    container_name: traefik
+    image: traefik:v3.7.13@sha256:f86a2cab1b5c649070c49f883c743dd32d8485a56e3368c5f93b9e91f1e91259
+    # No `logging:` block, and deliberately not the json-file one that stood here until
+    # #1105 either. This stack was the second pilot for the syslog log driver (#978);
+    # that configuration is now the daemon default in /etc/docker/daemon.json, so a copy
+    # here would only be a second place to drift. A per-container block overrides the
+    # daemon default, which is how the old json-file block would have kept this source
+    # out of the store while the rollout looked green.
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "10"
+        max-size: "100m"
+    restart: unless-stopped
+
+    # Network: the address is pinned because qBittorrent's WebUI trusts it as a
+    # reverse proxy by literal address, and a floating IP would silently turn
+    # X-Forwarded-For back off. It sits below smoonet's dynamic allocator range,
+    # which is 172.18.128.0/17, and clear of Prowlarr on .50 and gluetun on .51.
+    # That range is a property of the network object rather than of any compose
+    # file; stack-recovery.md holds the create command that restores it.
+    networks:
+      smoonet:
+        ipv4_address: 172.18.0.52
+    # Ports (host binding)
+    ports:
+      - "443:443/tcp" # HTTPS
+      - "444:444/tcp" # TCP (your custom)
+      - "8080:8080/tcp" # Dashboard
+      - "80:80/tcp" # HTTP
+      - "81:81/tcp" # Additional HTTP
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik:/etc/traefik # Config, certs, acme.json [web:55]
+      - /mnt/user/appdata/traefik/plugins-storage:/plugins-storage # Plugin cache: start survives DNS/internet outage, no re-download
+      - /mnt/user/appdata/traefik/plugins-local:/plugins-local:ro # Plugin sources for experimental.localPlugins; a container-internal symlink does not survive a recreate
+
+    # Dropped into the watched rules directory, so the bouncer middleware is a
+    # file-provider object like the chains that use it. A config rather than a file in
+    # /mnt/user/appdata/traefik/rules on purpose: the two values below are secrets or
+    # script-maintained env, and only compose interpolates them - the file provider reads
+    # plain YAML and would keep `${...}` as a literal string.
+    configs:
+      - source: crowdsec_bouncer
+        target: /etc/traefik/rules/crowdsec-bouncer.yml
+      - source: crowdsec_lapi_key
+        target: /run/secrets/crowdsec-lapi-key
+
+    # Environment variables
+    environment:
+      - CF_DNS_API_TOKEN=${CF_DNS_API_TOKEN} # Cloudflare API token (sensitive!)
+      - DOCKER_API_VERSION=1.54
+      - DOCKER_HOST=tcp://dockerproxy-ro:2375 # Docker socket proxy, read-only
+      - HOST_CONTAINERNAME=traefik
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Health probe against Traefik's own /ping on the internal `traefik` entrypoint,
+    # which api.insecure already creates on 8080. It needs `ping:` in the static
+    # config, which is host state under /mnt/user/appdata/traefik/traefik.yml and is
+    # mirrored into traefik.yml beside this file. /api/overview was rejected as a
+    # substitute: it answers 200 while routing is degraded, and it stops working the
+    # day api.insecure is turned off. localhost resolves here, but the literal
+    # 127.0.0.1 is used per the house rule after batch 1. The probe answers as soon as
+    # the process listens, so it reports liveness and not router convergence.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:8080/ping || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # The crowdsec-bouncer middleware used to be defined here, by labels on this very
+      # service. That made it a docker-provider object, `crowdsec-bouncer@docker`, while
+      # every router referencing it comes from the file provider. The file provider is
+      # served from the first configuration round, the docker provider only after its
+      # first snapshot arrives, so every start logged one
+      # `middleware "crowdsec-bouncer@docker" does not exist` error per router before the
+      # two providers converged. The definition now lives in the crowdsec_bouncer config
+      # below, which the file provider reads, so router and middleware come from the same
+      # provider and the window is gone.
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 13, migration wave 3a. No basic_auth and no headers: measured in #1809, the
+      # endpoint answers 200 without credentials, and the columns on the old monitor are
+      # leftovers of a Traefik middleware that no longer exists.
+      - kuma.traefik.http.name=traefik - traefik
+      - kuma.traefik.http.url=https://traefik.example.com
+      - kuma.traefik.http.method=GET
+      - 'kuma.traefik.http.accepted_statuscodes=["200-299"]'
+      - kuma.traefik.http.max_redirects=10
+      - kuma.traefik.http.http_body_encoding=json
+      - kuma.traefik.http.timeout=4
+      - kuma.traefik.http.interval=300
+      - kuma.traefik.http.max_retries=1
+      - kuma.traefik.http.retry_interval=300
+      - kuma.traefik.http.resend_interval=0
+      - kuma.traefik.http.ignore_tls=false
+      - kuma.traefik.http.expiry_notification=true
+      - kuma.traefik.http.upside_down=false
+      - 'kuma.traefik.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/unraid-templates/master/traefik/traefik.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+  geoipupdate:
+    container_name: geoipupdate
+    image: ghcr.io/maxmind/geoipupdate:v8.0.0@sha256:51e70dd6f16cd3e4d845ac02d09940b10772a75b9d741427d235a78570923c1d
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik/geoip/:/usr/share/GeoIP:rw
+
+    # Environment variables
+    environment:
+      - GEOIPUPDATE_ACCOUNT_ID=${GEOIPUPDATE_ACCOUNT_ID}
+      - GEOIPUPDATE_EDITION_IDS=GeoLite2-ASN GeoLite2-City GeoLite2-Country
+      - GEOIPUPDATE_FREQUENCY=24
+      - GEOIPUPDATE_LICENSE_KEY=${GEOIPUPDATE_LICENSE_KEY}
+      - HOST_CONTAINERNAME=geoipupdate
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Health probe. Deviation from the HTTP default: this container is a periodic
+    # downloader with no listening port. The image bakes /usr/bin/healthcheck.sh,
+    # which checks that the database files were refreshed, and that is the only
+    # meaningful signal here - declared explicitly so an image bump cannot change it
+    # unnoticed.
+    # healthcheck: image-provided, /usr/bin/healthcheck.sh. The container has no listening
+    # port, so the image's own script is the only meaningful signal.
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.geoipupdate.docker.name=traefik - geoipupdate
+      - kuma.geoipupdate.docker.docker_container=geoipupdate
+      - kuma.geoipupdate.docker.docker_host=1
+      - kuma.geoipupdate.docker.interval=300
+      - kuma.geoipupdate.docker.max_retries=1
+      - kuma.geoipupdate.docker.retry_interval=300
+      - kuma.geoipupdate.docker.resend_interval=0
+      - 'kuma.geoipupdate.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/tritones/unraid-templates/main/templates/img/geoipupdate.png
+  traefik-manager:
+    container_name: traefik-manager
+    depends_on:
+      - traefik
+    image: ghcr.io/chr0nzz/traefik-manager:1.13.4@sha256:94377a6c2d1ba10dc596b3c8f04969140ec799762fbc56103fa29d34370fc893
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "5102:5000/tcp" # Traefik Manager UI
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik/dynamic.yml:/app/traefik/dynamic.yml:rw
+      - /mnt/user/appdata/traefik/traefik.yml:/app/traefik/traefik.yml:rw
+      - /mnt/user/appdata/traefik/acme.json:/app/traefik/acme.json:ro
+      - /mnt/user/appdata/traefik/logs/access.log:/app/traefik/logs/access.log:ro
+      - /mnt/user/appdata/traefik/traefik-manager/config:/app/config:rw
+      - /mnt/user/appdata/traefik/traefik-manager/backups:/app/backups:rw
+
+    # Environment variables
+    environment:
+      - ACME_JSON_PATH=/app/traefik/acme.json
+      - ACCESS_LOG_PATH=/app/traefik/logs/access.log
+      - CERT_RESOLVER=cloudflare
+      - CONFIG_PATH=/app/traefik/dynamic.yml
+      - COOKIE_SECURE=true
+      # Stays on the write proxy: RESTART_METHOD=proxy below means this container
+      # restarts Traefik over the Docker API, which the read-only proxy refuses.
+      - DOCKER_HOST=tcp://dockerproxy:2375
+      - DOMAINS=${TRAEFIK_MANAGER_DOMAINS}
+      - HOST_CONTAINERNAME=${TRAEFIK_MANAGER_SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - RESTART_METHOD=proxy
+      - STATIC_CONFIG_PATH=/app/traefik/traefik.yml
+      - TRAEFIK_API_URL=http://traefik:8080
+      - TRAEFIK_CONTAINER=traefik
+      - TZ=Europe/Berlin
+
+    # Health probe. The image bakes `curl -f http://localhost:5000/`; declared here in
+    # the house wget form against the same target, so the probe lives in the
+    # repository. The UI is the only surface this image exposes - it has no dedicated
+    # health endpoint. localhost resolves to ::1 here, where it does not listen, so
+    # the probe uses the literal 127.0.0.1.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.rule=Host(`${TRAEFIK_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.service=${TRAEFIK_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.priority=10
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.rule=Host(`${TRAEFIK_MANAGER_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.service=${TRAEFIK_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.rule=Host(`${TRAEFIK_MANAGER_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.service=${TRAEFIK_MANAGER_SERVICE}
+      - traefik.http.routers.${TRAEFIK_MANAGER_SERVICE}-bypass.tls=true
+      # Service port (Traefik Manager runs on 5000)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${TRAEFIK_MANAGER_SERVICE}.loadbalancer.server.url=${TRAEFIK_MANAGER_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/chr0nzz.png
+      - net.unraid.docker.webui=${TRAEFIK_MANAGER_UNRAID_WEBGUI_URL}
+  traefik-log-dashboard:
+    container_name: traefik-log-dashboard
+    depends_on:
+      - traefik
+      - traefik-log-dashboard-agent
+    image: hhftechnology/traefik-log-dashboard:3.1.1@sha256:f982908e6d0665fd361eeef893d50d7743be09e1c95d3a087d4f7d47a651bead
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports
+    ports:
+      - "5101:3000/tcp" # Dashboard UI
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik/dashboard/:/data:rw
+      - /mnt/user/appdata/traefik/dashboard/geoip/:/geoip:ro
+
+    # Environment variables
+    environment:
+      - AGENT_1_NAME=smooRaid
+      - AGENT_1_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
+      - AGENT_1_URL=http://traefik-log-dashboard-agent:5000
+      - DASHBOARD_AGENTS_ENV_ONLY=true
+      - DASHBOARD_MAX_LOGS_DISPLAY=500
+      - GEOIP_LOCAL_DB_PATH=/geoip/GeoLite2-City.mmdb
+      # Accounts are not free, hence disabled
+      #- GEOIP_PROVIDER_URLS=https://ipwho.is,https://ip-api.com/json
+      - GEOIP_UNKNOWN_CACHE_TTL_MS=300000
+      - HOST_CONTAINERNAME=traefik-log-dashboard
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - NODE_ENV=production
+      - TZ=Europe/Berlin
+
+    # Health probe. The UI root is the only surface it exposes, so it stands in for a
+    # health endpoint.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config (only for dashboard)
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.priority=5000
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.rule=Host(`${TRAEFIK_LOG_DASHBOARD_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.service=${TRAEFIK_LOG_DASHBOARD_SERVICE}
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.priority=10
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.rule=Host(`${TRAEFIK_LOG_DASHBOARD_EXTERNAL_URL}`)
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.service=${TRAEFIK_LOG_DASHBOARD_SERVICE}
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.rule=Host(`${TRAEFIK_LOG_DASHBOARD_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.service=${TRAEFIK_LOG_DASHBOARD_SERVICE}
+      - traefik.http.routers.${TRAEFIK_LOG_DASHBOARD_SERVICE}-bypass.tls=true
+      # Service port (dashboard runs on 3000)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${TRAEFIK_LOG_DASHBOARD_SERVICE}.loadbalancer.server.url=${TRAEFIK_LOG_DASHBOARD_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 15, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.traefik-log-dashboard.http.name=traefik - log-dashboard
+      - kuma.traefik-log-dashboard.http.url=https://tld.example.com/dashboard
+      - kuma.traefik-log-dashboard.http.method=GET
+      - 'kuma.traefik-log-dashboard.http.accepted_statuscodes=["200-299"]'
+      - kuma.traefik-log-dashboard.http.max_redirects=10
+      - kuma.traefik-log-dashboard.http.http_body_encoding=json
+      - kuma.traefik-log-dashboard.http.timeout=4
+      - kuma.traefik-log-dashboard.http.interval=300
+      - kuma.traefik-log-dashboard.http.max_retries=1
+      - kuma.traefik-log-dashboard.http.retry_interval=300
+      - kuma.traefik-log-dashboard.http.resend_interval=0
+      - kuma.traefik-log-dashboard.http.ignore_tls=false
+      - kuma.traefik-log-dashboard.http.expiry_notification=true
+      - kuma.traefik-log-dashboard.http.upside_down=false
+      - 'kuma.traefik-log-dashboard.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/user-attachments/assets/e6cf097b-2232-4c2c-ba55-5de780724aed
+      - net.unraid.docker.webui=${TRAEFIK_LOG_DASHBOARD_UNRAID_WEBGUI_URL}
+  traefik-log-dashboard-agent:
+    container_name: traefik-log-dashboard-agent
+    image: hhftechnology/traefik-log-dashboard-agent:3.1.1@sha256:4c9853d486a0e3108678fd00aeda86ce1b269c0ae1b1c2ab9e5c81760e12d53a
+    restart: unless-stopped
+
+    # Network
+    networks:
+      smoonet:
+    # Ports (internal API)
+    ports:
+      - "5100:5000/tcp"
+
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/traefik/dashboard/positions/:/data:rw
+      - /mnt/user/appdata/traefik/logs/:/logs:ro
+
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=traefik-log-dashboard-agent
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TRAEFIK_LOG_DASHBOARD_ACCESS_PATH=/logs/access.log
+      - TRAEFIK_LOG_DASHBOARD_AUTH_TOKEN=${TRAEFIK_LOG_AGENT_TOKEN}
+      - TRAEFIK_LOG_DASHBOARD_ERROR_PATH=/logs/traefik.log
+      - TRAEFIK_LOG_DASHBOARD_LOG_FORMAT=json
+      - TRAEFIK_LOG_DASHBOARD_SYSTEM_MONITORING=true
+      - TZ=Europe/Berlin
+
+    # Health probe against the agent API the dashboard reads from. The agent exposes
+    # no dedicated health path, so the API root stands in for one.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.traefik-log-dashboard-agent.docker.name=traefik - log-dashboard-agent
+      - kuma.traefik-log-dashboard-agent.docker.docker_container=traefik-log-dashboard-agent
+      - kuma.traefik-log-dashboard-agent.docker.docker_host=1
+      - kuma.traefik-log-dashboard-agent.docker.interval=300
+      - kuma.traefik-log-dashboard-agent.docker.max_retries=1
+      - kuma.traefik-log-dashboard-agent.docker.retry_interval=300
+      - kuma.traefik-log-dashboard-agent.docker.resend_interval=0
+      - 'kuma.traefik-log-dashboard-agent.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=traefik
+      - net.unraid.docker.icon=https://github.com/user-attachments/assets/e6cf097b-2232-4c2c-ba55-5de780724aed
+configs:
+  # The CrowdSec bouncer middleware, dropped into the file provider's rules directory.
+  # Settings are the ones the labels on the traefik service used to carry.
+  #
+  # The LAPI key is not inlined here: this file is world-readable inside the container and
+  # its content is tracked in git, so the plugin reads it from crowdsec_lapi_key below,
+  # which is the same `${...}` value but never lands in the rules directory.
+  #
+  # forwardedHeadersTrustedIPs takes a list, and the env var is the comma-separated
+  # Cloudflare range set that cloudflare_trusted_ips.py maintains. Wrapping it in a flow
+  # sequence keeps that one source of truth: compose substitutes the string, YAML splits
+  # it on the commas. The IPv6 ranges stay unquoted plain scalars, which is legal because
+  # none of their colons is followed by a space.
+  crowdsec_bouncer:
+    content: |
+      http:
+        middlewares:
+          crowdsec-bouncer:
+            plugin:
+              bouncer:
+                enabled: "true"
+                crowdsecMode: stream
+                crowdsecLapiScheme: http
+                crowdsecLapiHost: crowdsec:8080
+                crowdsecLapiPath: /
+                crowdsecLapiKeyFile: /run/secrets/crowdsec-lapi-key
+                forwardedHeadersTrustedIPs: [${CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS}]
+
+  crowdsec_lapi_key:
+    content: ${CROWDSEC_TRAEFIK_BOUNCER_API_KEY}
+
+networks:
+  smoonet:
+    external: true

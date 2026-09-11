@@ -1,0 +1,103 @@
+services:
+  tautulli:
+    container_name: tautulli
+    image: ghcr.io/tautulli/tautulli:v2.18.1@sha256:7feb72192d5f477f2e4e28ed6b871b57478aff693c279462577cb4dad16556de
+    # healthcheck: mirrored from ghcr.io/tautulli/tautulli. The image probes /status
+    # over HTTPS first and falls back to HTTP, which covers both HTTPS settings; the
+    # image ships no wget, so curl is the client here.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -ILfks https://localhost:8181/status > /dev/null || curl -ILfs http://localhost:8181/status > /dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+    # Network config (macvlan/br0 with static IP)
+    networks:
+      br0:
+        ipv4_address: 192.0.2.100
+        mac_address: 5a:23:37:f7:48:71
+      smoonet: {}
+    # Ports
+    ports:
+      - "8181:8181" # Tautulli Web UI [web:24][web:29]
+    # Volumes
+    volumes:
+      - /mnt/user/appdata/tautulli:/config # Persistent config [web:24]
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=tautulli
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - TCP_PORT_8181=8181
+      - TZ=Europe/Berlin
+
+    # Resource limits (Compose style)
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 30, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.tautulli.http.name=tautulli - tautulli
+      - kuma.tautulli.http.url=https://tautulli.example.com
+      - kuma.tautulli.http.method=GET
+      - 'kuma.tautulli.http.accepted_statuscodes=["200-299"]'
+      - kuma.tautulli.http.max_redirects=10
+      - kuma.tautulli.http.http_body_encoding=json
+      - kuma.tautulli.http.timeout=4
+      - kuma.tautulli.http.interval=300
+      - kuma.tautulli.http.max_retries=1
+      - kuma.tautulli.http.retry_interval=300
+      - kuma.tautulli.http.resend_interval=0
+      - kuma.tautulli.http.ignore_tls=false
+      - kuma.tautulli.http.expiry_notification=true
+      - kuma.tautulli.http.upside_down=false
+      - 'kuma.tautulli.http.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=tautulli
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/Tautulli/Tautulli-Unraid-Template/master/img/logo-circle.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  br0:
+    external: true
+    name: br0
+  smoonet:
+    external: true
+    name: smoonet

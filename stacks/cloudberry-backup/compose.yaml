@@ -1,0 +1,126 @@
+services:
+  cloudberry-backup:
+    container_name: CloudBerryBackup
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    environment:
+      - APP_NICENESS=0
+      - CBB_WEB_INTERFACE_PASSWORD=${CLOUDBERRY_WEB_INTERFACE_PASSWORD}
+      - CBB_WEB_INTERFACE_USER=${CLOUDBERRY_WEB_INTERFACE_USER}
+      - CONTAINER_DEBUG=0
+      - DARK_MODE=1
+      - DISPLAY_HEIGHT=1080
+      - DISPLAY_WIDTH=1920
+      - ENABLE_CJK_FONT=0
+      - GROUP_ID=100
+      - HOST_CONTAINERNAME=CloudBerryBackup
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - INSTALL_PACKAGES=
+      - KEEP_APP_RUNNING=0
+      - PACKAGES_MIRROR=
+      - SECURE_CONNECTION=0
+      - SECURE_CONNECTION_CERTS_CHECK_INTERVAL=60
+      - SECURE_CONNECTION_VNC_METHOD=SSL
+      - SUP_GROUP_IDS=
+      - TZ=Europe/Berlin
+      - UMASK=0000
+      - USER_ID=99
+      - VNC_LISTENING_PORT=5900
+      - VNC_LOCALHOST_ONLY=0
+      - VNC_PASSWORD=${CLOUDBERRY_VNC_PASSWORD}
+      - WEB_AUDIO=0
+      - WEB_AUTHENTICATION=0
+      - WEB_AUTHENTICATION_PASSWORD=${CLOUDBERRY_WEB_AUTHENTICATION_PASSWORD}
+      - WEB_AUTHENTICATION_TOKEN_VALIDITY_TIME=24
+      - WEB_AUTHENTICATION_USERNAME=
+      - WEB_FILE_MANAGER=0
+      - WEB_FILE_MANAGER_ALLOWED_PATHS=AUTO
+      - WEB_FILE_MANAGER_DENIED_PATHS=
+      - WEB_LISTENING_PORT=5800
+      - WEB_LOCALHOST_ONLY=0
+      - WEB_NOTIFICATION=0
+    # The jlesage web GUI on 5800 is the only HTTP surface this image exposes and it
+    # has no health endpoint, so the probe falls back to the root path. A 200 there
+    # means the GUI process is serving, which is the signal available here.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5800/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: jlesage/cloudberry-backup:v26.08.2@sha256:4b68ef8728a6eb24af5d8b53f4bad7096f6cdfe3b7521adba0efa3a6e7e47e31
+    networks:
+      smoonet:
+    ports:
+      - "43210:43210/tcp"
+      - "43211:43211/tcp"
+      - "5800:5800/tcp"
+      - "5900:5900/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/cloudberry-backup/hooks/56-cloudberry-icon-perms.sh:/etc/cont-init.d/56-cloudberry-icon-perms.sh:ro
+      - /mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/cloudberry-backup/hooks/95-cloudberry-icon-perms-restore.sh:/etc/cont-finish.d/95-cloudberry-icon-perms-restore.sh:ro
+      - /mnt/user/appdata/CloudBerryBackup:/config:rw
+      - /mnt/user/backups:/storage:ro
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 37, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.cloudberry-backup.http.name=cloudberry-backup - cloudberry-backup
+      - kuma.cloudberry-backup.http.url=https://backup.example.com
+      - kuma.cloudberry-backup.http.method=GET
+      - 'kuma.cloudberry-backup.http.accepted_statuscodes=["200-299"]'
+      - kuma.cloudberry-backup.http.max_redirects=10
+      - kuma.cloudberry-backup.http.http_body_encoding=json
+      - kuma.cloudberry-backup.http.timeout=4
+      - kuma.cloudberry-backup.http.interval=300
+      - kuma.cloudberry-backup.http.max_retries=1
+      - kuma.cloudberry-backup.http.retry_interval=300
+      - kuma.cloudberry-backup.http.resend_interval=0
+      - kuma.cloudberry-backup.http.ignore_tls=false
+      - kuma.cloudberry-backup.http.expiry_notification=true
+      - kuma.cloudberry-backup.http.upside_down=false
+      - 'kuma.cloudberry-backup.http.notification_id_list={"1": true}'
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/backblaze.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  smoonet:
+    external: true

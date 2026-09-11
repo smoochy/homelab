@@ -1,0 +1,44 @@
+services:
+  mosquitto:
+    container_name: mosquitto
+    environment:
+      - HOST_CONTAINERNAME=mosquitto
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - PGID=100
+      - PUID=99
+      - RUN_INSECURE_MQTT_SERVER=2
+      - TZ=Europe/Berlin
+      - UMASK=022
+    # healthcheck: none. The broker speaks MQTT only and serves no HTTP surface, so
+    # there is nothing the convention's probe forms can read; a port check would stay
+    # green while the broker refuses every subscription. Its liveness is covered by the
+    # stack-health poller instead.
+    image: ghcr.io/imagegenius/mosquitto:2.0.18-r0-ig19@sha256:d9a32b7bf84380ee7cff5f7d16b70bbb51d453496d317df19e6e48fd45dd5352
+    # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
+    # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
+    # numeric ids and why every field is written out.
+    labels:
+      - kuma.mosquitto.docker.name=mosquitto - mosquitto
+      - kuma.mosquitto.docker.docker_container=mosquitto
+      - kuma.mosquitto.docker.docker_host=1
+      - kuma.mosquitto.docker.interval=300
+      - kuma.mosquitto.docker.max_retries=1
+      - kuma.mosquitto.docker.retry_interval=300
+      - kuma.mosquitto.docker.resend_interval=0
+      - 'kuma.mosquitto.docker.notification_id_list={"1": true}'
+      - com.smoochy.komodo.restore_stack=mosquitto
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/imagegenius/templates/main/unraid/img/mosquitto.png
+    networks:
+      - smoonet
+    pids_limit: 2048
+    ports:
+      - "1883:1883/tcp"
+      - "8883:8883/tcp"
+      - "9001:9001/tcp"
+    restart: unless-stopped
+    volumes:
+      - /mnt/user/appdata/mosquitto:/config:rw
+networks:
+  smoonet:
+    external: true

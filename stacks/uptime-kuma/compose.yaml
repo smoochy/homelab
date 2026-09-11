@@ -1,0 +1,83 @@
+services:
+  uptime-kuma:
+    container_name: uptime-kuma
+    image: ghcr.io/louislam/uptime-kuma:2.5.3@sha256:3e24e96c89efff0e3a4b0698cbdd36c15ad3022371db57166e5588853002ee5c
+    restart: unless-stopped
+
+    # Network configuration
+    # Pinned since the qbittorrent riders push their heartbeats here (#1045).
+    # Two of them run inside the tunnel namespace, whose resolver is the
+    # tunnel's and whose kill switch permits only the smoonet bridge - so they
+    # can reach this container by address and by nothing else.
+    networks:
+      smoonet:
+        ipv4_address: 172.18.0.53
+
+    # Port mapping
+    ports:
+      - "3002:3001"
+
+    # Volume mounts
+    volumes:
+      - /mnt/user/appdata/uptimekuma:/app/data
+
+    # Environment variables
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+
+    # Resource limits
+    pids_limit: 2048
+
+    # Health probe. Two deviations from the wget default, both forced by the image:
+    # it ships curl but no wget, and it bakes its own `extra/healthcheck` script.
+    # The baked check is declared here explicitly so the probe lives in the
+    # repository and an image bump cannot change it unnoticed.
+    # healthcheck: image-provided, extra/healthcheck. The image bakes its own health
+    # script and it is declared here explicitly.
+    healthcheck:
+      test: ["CMD", "extra/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    # Unraid-specific labels
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=uptime-kuma
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/CorneliousJD/Docker-Templates/master/icons/uptimekuma.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+# Network definition (external if already exists)
+networks:
+  smoonet:
+    external: true
+    name: smoonet

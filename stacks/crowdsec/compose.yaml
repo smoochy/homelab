@@ -83,7 +83,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
-    image: metabase/metabase:v0.63.17.1@sha256:0da940965da08b6418e6aac735d612cbe0f974086b35b73001f75d5c0ac6cc78
+    image: metabase/metabase:v0.63.17.2@sha256:5f2ace3426bc4fa9259d6ec68dacae0023c302e8e812ee7f54fce9f6942b6874
     networks:
       - smoonet
     pids_limit: 2048
@@ -255,7 +255,7 @@ services:
       - "6062:8080/tcp"
     restart: unless-stopped
     volumes:
-      - /mnt/user/appdata/komodo/repos/${KOMODO_REPO_NAME:-homelab-private}/stacks/crowdsec/compose.yaml:/app/docker-compose.yml:ro
+      - /mnt/user/appdata/komodo/repos/homelab/stacks/crowdsec/compose.yaml:/app/docker-compose.yml:ro
       - /mnt/user/appdata/crowdsec/manager/backups/:/app/backups:rw
       - /mnt/user/appdata/crowdsec/manager/config/:/app/config:rw
       - /mnt/user/appdata/crowdsec/manager/data/:/app/data:rw

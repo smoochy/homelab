@@ -312,6 +312,10 @@ services:
       - /mnt/user/appdata/radarr/scripts/tools:/mnt/user/appdata/radarr/scripts/tools
       - /mnt/user/appdata/sonarr/scripts/tools:/mnt/user/appdata/sonarr/scripts/tools
       - /mnt/user/appdata/sabnzbd/scripts:/mnt/user/appdata/sabnzbd/scripts
+      ## The tuning directory, so `tuning.example` can be delivered next to the
+      ## live `tuning.yaml` it is the reference for (#3236). The directory, not
+      ## the file: the destination does not exist before the first delivery.
+      - /mnt/user/appdata/qbittorrent/tuning:/mnt/user/appdata/qbittorrent/tuning
     networks:
       - smoonet
 

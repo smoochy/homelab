@@ -1,4 +1,4 @@
-"""Stack health poller for the homelab (homelab-private issues #883, #884, #1005).
+"""Stack health poller for the homelab (homelab issues #883, #884, #1005).
 
 Komodo reports a deploy, not a stack. Issue #967 is the proof: a deploy was
 recorded as `success: true` over a qBittorrent stack whose containers were gone,
@@ -464,7 +464,7 @@ def step(entry, bad, now, decisive=False):
 # ---------------------------------------------------------------------------
 
 def check_repos(state, now):
-    """The repo half of a round (homelab-private issue #1792).
+    """The repo half of a round (homelab issue #1792).
 
     A Komodo Repo resource runs an `on_pull` hook - `scripts/deliver.sh` is one
     - and a hook that exits non-zero fails the pull. Komodo records that and
@@ -748,7 +748,7 @@ def _self_check():
         "name": "qbittorrent-scripts",
         "info": {
             "state": "Failed",
-            "repo": "smoochy/homelab-private",
+            "repo": "smoochy/homelab",
             "branch": "main",
             "cloned_hash": "85f7052",
             "latest_hash": "9f0a1b2",
@@ -761,7 +761,7 @@ def _self_check():
     repo_body = repo_failure_body(repo).split("\n")
     assert repo_body[0] == "**qbittorrent-scripts** - last pull failed", repo_body
     assert repo_body[1] == "", repo_body
-    assert repo_body[2] == "📝 Source: smoochy/homelab-private (branch main)", repo_body
+    assert repo_body[2] == "📝 Source: smoochy/homelab (branch main)", repo_body
     assert repo_body[3] == "🔖 Cloned: 85f7052 - latest: 9f0a1b2", repo_body
     assert repo_body[-1].endswith("/repos/abc)"), repo_body
     assert "@" not in "\n".join(repo_body), repo_body

@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -127,6 +128,16 @@ def strip_inline_comment(value: str) -> str:
     return "".join(result).strip()
 
 
+_ENV_DEFAULT_RE = re.compile(r"\$\{(\w+):-([^}]*)\}")
+
+
+def expand_env_defaults(value: str) -> str:
+    """Expand ${VAR:-default} the same way Docker Compose does, so a config
+    value can reuse the house style clone-path variable (issue #1697) instead
+    of hardcoding the Komodo repo name."""
+    return _ENV_DEFAULT_RE.sub(lambda match: os.environ.get(match.group(1), match.group(2)), value)
+
+
 def load_env_file(path: Path) -> None:
     if not path.exists():
         return
@@ -140,6 +151,7 @@ def load_env_file(path: Path) -> None:
         value = strip_inline_comment(value)
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
             value = value[1:-1]
+        value = expand_env_defaults(value)
         os.environ.setdefault(key, value)
 
 
@@ -167,13 +179,15 @@ def build_config(args: argparse.Namespace) -> Config:
         ),
         runtime_env_path=env_path(
             "TRAEFIK_RUNTIME_ENV_PATH",
-            "/mnt/user/appdata/komodo/repos/homelab-private/stacks/traefik/.env",
+            expand_env_defaults(
+                "/mnt/user/appdata/komodo/repos/homelab/stacks/traefik/.env"
+            ),
         ),
         temp_repo_base=env_path(
             "TEMP_REPO_BASE", "/mnt/user/appdata/komodo/root/tmp"
         ),
         repo_url=env_str(
-            "HOMELAB_PRIVATE_REPO_URL", "git@github.com:smoochy/homelab-private.git"
+            "HOMELAB_PRIVATE_REPO_URL", "git@github.com:smoochy/homelab.git"
         ),
         repo_branch=env_str("HOMELAB_PRIVATE_REPO_BRANCH", "main"),
         repo_env_enc_relpath=Path(

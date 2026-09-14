@@ -7,7 +7,7 @@ It is intended for Unraid or similar Docker hosts where:
 
 - `/mnt/user/appdata/traefik/traefik.yml` is the live Traefik config file
 - `/mnt/user/appdata/traefik/dynamic.yml` is the companion dynamic config file
-- `/mnt/user/appdata/komodo/repos/homelab-private/stacks/traefik/.env` is the
+- `/mnt/user/appdata/komodo/repos/homelab/stacks/traefik/.env` is the
   local runtime env file that Komodo may overwrite from Git on later pulls
 - `komodo-periphery` already has `sops` and `age` available
 
@@ -30,7 +30,7 @@ local on the host.
 3. Replaces only the managed block inside `/mnt/user/appdata/traefik/traefik.yml`.
 4. Updates `CROWDSEC_FORWARDED_HEADERS_TRUSTED_IPS` in the local Traefik runtime
    env file under the Komodo repo checkout.
-5. Creates a fresh temporary clone of `homelab-private`.
+5. Creates a fresh temporary clone of `homelab`.
 6. Renders the tracked `stacks/traefik/.env.example` inside that temporary clone
    from the already-updated local Traefik runtime `.env`.
 7. Calls `sops` and `age` from inside `komodo-periphery` to write the updated
@@ -42,7 +42,7 @@ local on the host.
 9. Deletes the temporary clone before exit, even on failure.
 
 The script never commits, stages, or pushes inside
-`/mnt/user/appdata/komodo/repos/homelab-private`.
+`/mnt/user/appdata/komodo/repos/homelab`.
 
 ## Requirements
 
@@ -50,7 +50,7 @@ The script never commits, stages, or pushes inside
 - Network access to:
   - `https://www.cloudflare.com/ips-v4`
   - `https://www.cloudflare.com/ips-v6`
-- SSH push access to `git@github.com:smoochy/homelab-private.git`
+- SSH push access to `git@github.com:smoochy/homelab.git`
 - A running `komodo-periphery` container with:
   - `sops`
   - `age-keygen`
@@ -112,7 +112,7 @@ Keep the real script folder under `/mnt/user/appdata/...` and call it through
 - The local runtime `.env` is intentionally updated before the temporary clone
   and push step. If the later Git step fails, the next successful run will reuse
   that already-updated local value.
-- If `/mnt/user/appdata/komodo/repos/homelab-private/stacks/traefik/.env` does
+- If `/mnt/user/appdata/komodo/repos/homelab/stacks/traefik/.env` does
   not change in a run, the script skips the temporary clone, Git commit, and
   GitHub push entirely.
 - The pushed repo artifacts for a successful sync are `stacks/traefik/.env.enc`

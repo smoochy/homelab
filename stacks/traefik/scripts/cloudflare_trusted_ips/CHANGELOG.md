@@ -28,6 +28,6 @@
   Traefik runtime `.env` so the public export can immediately reflect the new
   trusted IP list.
 - Added isolated public-preview automation for the Traefik env-sync path so
-  the technical preview PR is still created in `homelab-private`, but the
+  the technical preview PR is still created in `homelab`, but the
   matching public `homelab` sync is published automatically without affecting
   the general manual preview flow.

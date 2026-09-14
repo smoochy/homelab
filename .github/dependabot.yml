@@ -1,8 +1,0 @@
-# managed by smoochy/homelab-private apply_baseline.py — do not edit manually
-version: 2
-updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 0

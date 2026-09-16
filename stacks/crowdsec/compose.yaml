@@ -83,7 +83,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
-    image: metabase/metabase:v0.63.17.2@sha256:5f2ace3426bc4fa9259d6ec68dacae0023c302e8e812ee7f54fce9f6942b6874
+    image: metabase/metabase:v0.63.17.3@sha256:ce09c39e069092fc7892072b5ac8b7523c2a6ed152326530a57fb7ac5c83e4ba
     networks:
       - smoonet
     pids_limit: 2048
@@ -190,6 +190,61 @@ services:
     volumes:
       - /mnt/user/appdata/crowdsec/:/etc/crowdsec:rw
       - /mnt/user/appdata/crowdsec/data/:/var/lib/crowdsec/data:rw
+  # Imports roughly 28 public threat feeds (IPsum, Spamhaus DROP, FireHOL,
+  # Abuse.ch and others) into the local API as decisions, so the firewall bouncer
+  # mirrors them into the host nftables set. Daemon mode: the container stays up
+  # and repeats one round per day, so no cron job or systemd timer is needed.
+  crowdsec-blocklist-import:
+    container_name: crowdsec-blocklist-import
+    depends_on:
+      - crowdsec
+    environment:
+      # Our own ranges are never imported. The firewall bouncer enforces with
+      # NET_ADMIN on the host network, so a false positive on a LAN range would
+      # cut off access to the very machine that has to fix it.
+      - ALLOWLIST=192.0.2.0/24,172.16.0.0/12,10.0.0.0/8
+      - ALLOWLIST_GITHUB=true
+      # One alert per round instead of one per source batch. The CrowdSec console
+      # counts alerts, not decisions, and per-source tracking is not worth that quota.
+      - CONSOLIDATE_ALERTS=true
+      - CROWDSEC_LAPI_KEY=${CROWDSEC_BLOCKLIST_IMPORT_LAPI_KEY}
+      - CROWDSEC_LAPI_URL=http://crowdsec:8080
+      - CROWDSEC_MACHINE_ID=blocklist-import
+      - CROWDSEC_MACHINE_PASSWORD=${CROWDSEC_BLOCKLIST_IMPORT_MACHINE_PASSWORD}
+      # Two hours more than the import interval, so a late or slow round leaves no
+      # window in which the previous decisions have already expired.
+      - DECISION_DURATION=26h
+      - HOST_CONTAINERNAME=crowdsec-blocklist-import
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - INTERVAL=86400
+      - LOG_LEVEL=INFO
+      # Cap on existing plus new decisions. The hard ceiling is the bouncer's own
+      # ipset: it creates `crowdsec-blacklists-<n>` with `maxelem 131072`, and an
+      # overflowing set silently stops taking elements while the decisions keep
+      # piling up in the database the dashboard queries live. 120000 leaves room
+      # for the other origins in the same set. The feed total is well past half a
+      # million entries, so this cap is what is enforced, not the feeds.
+      - MAX_DECISIONS=120000
+      # No Pushgateway in this homelab, and the upstream default would push to a
+      # localhost:9091 that does not exist here.
+      - METRICS_ENABLED=false
+      - RUN_ON_START=true
+      - TELEMETRY_ENABLED=false
+      - TZ=Europe/Berlin
+    # healthcheck: none. The image bakes `python -c "import blocklist_import"`, which
+    # only proves the file parses - it stays green while every round fails. The
+    # service exposes no HTTP endpoint and writes no heartbeat file, so the outcome
+    # of a round is visible in the log store and through the machine heartbeat in
+    # `cscli machines list` instead.
+    image: ghcr.io/wolffcatskyy/crowdsec-blocklist-import:3.7.1@sha256:78ec83464827a129128e2e1cba0bc23562988bec177745334a9f2896c817860c
+    labels:
+      - com.smoochy.komodo.restore_stack=crowdsec
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png
+    networks:
+      - smoonet
+    pids_limit: 512
+    restart: unless-stopped
   crowdsec-manager:
     container_name: crowdsec-manager
     depends_on:

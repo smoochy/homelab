@@ -25,7 +25,8 @@ services:
       - "8200:8200/tcp"
     volumes:
       - /mnt/user/appdata/duplicati/config:/config:rw
-      - /mnt/user/appdata/duplicati/backups:/backups:rw
+      # Local backup target lives on the dedicated 500GB SSD (/dev/sda1), not on the cache pool.
+      - /mnt/backup/duplicati:/backups:rw
       # Expose the Unraid mount tree directly so Duplicati can browse shares and disks under /source.
       - /:/source:ro
     environment:

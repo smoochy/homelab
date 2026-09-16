@@ -34,8 +34,12 @@ services:
       - HOST_CONTAINERNAME=${SERVICE}
       - HOST_HOSTNAME=homelab-host
       - HOST_OS=Unraid
-      - PGID=1000
-      - PUID=99
+      # Runs as root so the backup can read root-owned appdata files. As UID 99 the first
+      # run skipped 9003 files with PermissionDenied, among them crowdsec, komodo, traefik
+      # and adguard configuration. /source is mounted read-only, so root gains read access
+      # only, and the only writable paths stay /config and the SSD target.
+      - PGID=0
+      - PUID=0
       - SETTINGS_ENCRYPTION_KEY=${SETTINGS_ENCRYPTION_KEY}
       - TZ=Europe/Berlin
       - UMASK=022

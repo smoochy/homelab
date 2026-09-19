@@ -334,7 +334,7 @@ services:
     # HTTP or local socket of its own, so every probe available here would answer for
     # something other than the bouncer - an always-green check is worse than none.
     # Its liveness is covered by the stack-health poller instead.
-    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.36@sha256:4a7bd2e3eda81f9382f6e8571cebff7192e9b300e99d1cd5993b3b03580a0cb8
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.37@sha256:0ec362bd029296fe2d0243f7ad1cf442b02d30da16595a740c6f87a6cc72c522
     # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
     # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
     # numeric ids and why every field is written out.

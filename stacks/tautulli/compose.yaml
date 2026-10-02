@@ -1,7 +1,7 @@
 services:
   tautulli:
     container_name: tautulli
-    image: ghcr.io/tautulli/tautulli:v2.18.1@sha256:7feb72192d5f477f2e4e28ed6b871b57478aff693c279462577cb4dad16556de
+    image: ghcr.io/tautulli/tautulli:v2.18.2@sha256:1b5875fe3193d450a62e7b438eb6701195c841f14f3dcb962e545eda42d3696f
     # healthcheck: mirrored from ghcr.io/tautulli/tautulli. The image probes /status
     # over HTTPS first and falls back to HTTP, which covers both HTTPS settings; the
     # image ships no wget, so curl is the client here.

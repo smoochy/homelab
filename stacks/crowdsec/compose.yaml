@@ -83,7 +83,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 180s
-    image: metabase/metabase:v0.63.18.2@sha256:ca6d63cbedfd0a66a3c0239ac79a9df5f7ef3f2455027ab97e3bb26cbf281999
+    image: metabase/metabase:v0.63.18.5@sha256:110b7b0f07e4261aa15eb13dcbdcfb7adbf79be83d5f968a9a45c34cc6633f26
     networks:
       - smoonet
     pids_limit: 2048
@@ -334,7 +334,7 @@ services:
     # HTTP or local socket of its own, so every probe available here would answer for
     # something other than the bouncer - an always-green check is worse than none.
     # Its liveness is covered by the stack-health poller instead.
-    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.37@sha256:0ec362bd029296fe2d0243f7ad1cf442b02d30da16595a740c6f87a6cc72c522
+    image: ghcr.io/shgew/cs-firewall-bouncer-docker:v0.0.38@sha256:ece5da4dbc65e84784e1d21043667ddee34c0fc8e74bdb95d2e378021dc97f0e
     # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
     # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
     # numeric ids and why every field is written out.

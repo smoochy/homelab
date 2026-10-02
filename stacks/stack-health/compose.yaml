@@ -5,7 +5,7 @@ services:
       context: ./poller
       args:
         # Bump with scripts/src-rev.sh - see issue #935.
-        SRC_REV: 3194cc5a1bae
+        SRC_REV: 6b9f9743e241
     image: stack-health:local
     # Built locally and never published, so a registry pull must not be attempted.
     # A source change needs `docker compose up -d --build` on the host.

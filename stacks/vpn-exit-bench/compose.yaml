@@ -1,0 +1,164 @@
+# VPN Exit Bench benchmarks the Proton exits the qbittorrent stack already uses.
+#
+# WARNING, operational: a WireGuard key pair may only be live in one tunnel at a time - the server moves the peer to whichever endpoint registered last. Every config this stack serves is one of qbittorrent's own ten exits, so a benchmark run while the client is up would take its tunnel and its forwarded port with it. Stop the `qbittorrent` container before benchmarking and start it again afterwards. The thelounge stack's pinned DE#390 is deliberately not in qbittorrent's `wireguard_exits` and therefore not here either, so its gluetun tunnel is unaffected either way.
+services:
+  # One-shot. Turns qbittorrent's rendered exits.json into one WireGuard config file per exit, in the layout the app expects: the first directory level under /config/vpns becomes the provider name in the UI.
+  #
+  # The files have to exist on the *host*, not just in this container: for every benchmark the app creates a worker container and bind-mounts the selected config from the host path backing /config. A compose `configs:` overlay would be container-local and the worker would mount an empty directory instead.
+  vpn-exit-bench-config-sync:
+    container_name: vpn-exit-bench-config-sync
+    image: python:3.14.7-alpine3.24@sha256:c6ead215bfd31f1e433d968853b7a769989117115b728874824e6c0a27cb96fc
+    restart: "no"
+    # healthcheck: one-shot container. It renders the configs, exits 0 and stays exited, so there is no running process for a probe to report on. The app below gates on `service_completed_successfully` instead, which is the same signal a probe would carry.
+    configs:
+      - source: render_exit_configs
+        target: /render.py
+        mode: 0555
+    volumes:
+      # qbittorrent's own wireguard directory, read-only. exits.json is mode 0400 root, which this container reads because the python image runs as root. The directory rather than the file: the qbittorrent image rewrites forwarded_port in place beside it, and a missing file bind source would have Docker create a directory over that path.
+      - /mnt/user/appdata/qbittorrent/wireguard:/qbit-wireguard:ro
+      - /mnt/user/appdata/vpn-exit-bench/config:/config:rw
+    environment:
+      - HOST_CONTAINERNAME=vpn-exit-bench-config-sync
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+      - QBIT_EXITS_FILE=/qbit-wireguard/exits.json
+      - VPN_PROVIDER_DIR=/config/vpns/Proton
+    command: ["python", "/render.py"]
+
+  # Restricted Docker API for the app, on a stack-private network. The app needs container create/start/remove for its workers, which is a privileged surface, so it does not go through the shared `dockerproxy` of the komodo stack: a compromise here would otherwise get create/start over every stack routed through that proxy. The grants are upstream's own template set.
+  vpn-exit-bench-socket-proxy:
+    container_name: vpn-exit-bench-socket-proxy
+    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    restart: unless-stopped
+    # healthcheck: the proxy answers /_ping on 2375, but the haproxy-based image ships neither wget nor curl, so there is nothing inside it to probe with. A port or process check is the pattern this repo bans, so it gets none.
+    networks:
+      - docker-api
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - HOST_CONTAINERNAME=vpn-exit-bench-socket-proxy
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+      - CONTAINERS=1     # create, inspect and remove benchmark workers
+      - POST=1           # mutating calls for that lifecycle
+      - ALLOW_START=1
+      - ALLOW_STOP=1
+      - ALLOW_RESTARTS=1 # kill path for a timed-out worker
+      - EVENTS=0
+      - LOG_LEVEL=warning
+
+  vpn-exit-bench:
+    container_name: vpn-exit-bench
+    image: ghcr.io/mlo-tek/vpn-exit-bench:9e8e846dafd04816d49ee605ada8412283f3f660@sha256:bdfb566e24e4c45bebef44a6c97b2534c00c441924ed3ca26b5b6a7045007e9a
+    restart: unless-stopped
+    depends_on:
+      vpn-exit-bench-config-sync:
+        condition: service_completed_successfully
+      vpn-exit-bench-socket-proxy:
+        condition: service_started
+    # healthcheck: mirrored from ghcr.io/mlo-tek/vpn-exit-bench. curl is in the image and /api/health is a real endpoint; the four timings are the repository defaults rather than the image's own.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8787/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - smoonet
+      - docker-api
+    ports:
+      # Upstream is explicit that 8787 stays on a trusted network. It is published because the internal Traefik router needs internal DNS, which a client on the LAN address itself does not have - same reasoning as cryo-dash.
+      - "8787:8787/tcp" # Web UI
+    volumes:
+      - /mnt/user/appdata/vpn-exit-bench/config:/config:rw
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+      # Basic auth rather than none: the WebUI can create containers through the proxy above, so every LAN client that reaches 8787 must authenticate.
+      - AUTH_USERNAME=${AUTH_USERNAME}
+      - AUTH_PASSWORD=${AUTH_PASSWORD}
+      - DOCKER_HOST=tcp://vpn-exit-bench-socket-proxy:2375
+      # Same digest as this service, so a worker is never a different build than the UI that reports its result. The image is already local after this service pulls it, which is why the proxy needs no IMAGES grant.
+      - WORKER_IMAGE=ghcr.io/mlo-tek/vpn-exit-bench:9e8e846dafd04816d49ee605ada8412283f3f660@sha256:b535b3b77927b797c31dbcccf61bfbe88d39988ca50324be9b798107fe254122
+      # Fallback only. The app resolves the host path from its own /config mount first and reaches this only when that inspect call fails.
+      - HOST_CONFIG_DIR=/mnt/user/appdata/vpn-exit-bench/config/vpns
+      # The line's own rated throughput, so a result reads as a share of what the connection can do rather than as a bare number. Upstream defaults to 500/200.
+      - REFERENCE_DOWN_MBPS=600
+      - REFERENCE_UP_MBPS=300
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal only. Upstream warns against exposing this WebUI, and it holds container-create rights, so it gets no `-external` and no `-bypass` router.
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      - net.unraid.docker.icon=https://raw.githubusercontent.com/mlo-Tek/VPN-Exit-Bench/main/assets/vpn-exit-bench.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+
+configs:
+  # Reads qbittorrent's ten ranked exits and writes one wg-quick config per exit. Inline content rather than a file in this directory, for the reason the komodo stack's `ALLOW_ARCHIVE=1` comment gives: a config's content lives in compose.yaml, so a change to it moves the file Komodo compares and actually deploys. No secret is in this block - the keys are read at runtime from the qbittorrent bind.
+  render_exit_configs:
+    content: |
+      import json, os, pathlib, re
+
+      src = pathlib.Path(os.environ["QBIT_EXITS_FILE"])
+      out = pathlib.Path(os.environ["VPN_PROVIDER_DIR"])
+      out.mkdir(parents=True, exist_ok=True)
+
+      # The label is a Proton exit name such as "DE#443". The "#" is dropped so the file name stays a plain path segment in the app's URLs and JSON.
+      def name(label, rank):
+          slug = re.sub(r"[^A-Za-z0-9]+", "-", label or "").strip("-")
+          return f"{rank:02d}-{slug or 'exit'}.conf"
+
+      exits = json.loads(src.read_text())
+      written = set()
+      for exit in exits:
+          rank = int(exit["rank"])
+          target = out / name(exit.get("label"), rank)
+          # No PreUp/PostUp/PreDown/PostDown: wg-quick would run them through /bin/sh, and the app rejects a config carrying them anyway.
+          target.write_text(
+              "[Interface]\n"
+              f"PrivateKey = {exit['private_key']}\n"
+              f"Address = {exit['address']}\n"
+              "DNS = 10.2.0.1\n"
+              "\n"
+              "[Peer]\n"
+              f"PublicKey = {exit['peer_public_key']}\n"
+              "AllowedIPs = 0.0.0.0/0\n"
+              f"Endpoint = {exit['endpoint']}\n"
+              "PersistentKeepalive = 25\n"
+          )
+          target.chmod(0o400)
+          written.add(target.name)
+          print(f"wrote {target.name}")
+
+      # A label or a rank that moved would otherwise leave the old file behind and offer a stale exit in the UI for ever.
+      for stale in out.glob("*.conf"):
+          if stale.name not in written:
+              stale.unlink()
+              print(f"removed stale {stale.name}")
+
+networks:
+  smoonet:
+    external: true
+  # Stack-private. Carries nothing but the app's calls to its own socket proxy, and 2375 is never published to the host or the LAN.
+  docker-api:
+    internal: true

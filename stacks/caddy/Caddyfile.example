@@ -1,0 +1,29 @@
+# Globale Optionen
+{
+    http_port 80
+    https_port 443
+    admin 0.0.0.0:2019 {
+        origins localhost:2019 127.0.0.1:2019 [::1]:2019 192.0.2.99:2019
+    }
+}
+
+# Wiederverwendbares Snippet für DNS-Challenge (in allen Hosts nutzbar mit: import cloudflare_tls)
+(cloudflare_tls) {
+    tls {
+        dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+        resolvers 1.1.1.1 8.8.8.8
+    }
+}
+
+#Adguard
+# Externe Dienste (nicht in Docker)
+adguard.domain.tld {
+    reverse_proxy http://192.0.2.2
+    import cloudflare_tls
+}
+
+# Home Assistant
+ha.domain.tld {
+    reverse_proxy http://192.0.2.10:8123
+    import cloudflare_tls
+}

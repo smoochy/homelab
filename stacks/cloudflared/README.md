@@ -1,0 +1,17 @@
+# Cloudflared
+
+> Optional Cloudflare Tunnel connector for exposing selected services safely
+
+## Stack Role
+
+This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.example` for `cloudflared`.
+
+## Services
+
+- `probe-busybox` - one-shot init container that copies a static busybox into the `probe-bin` volume, so the distroless `cloudflared` image has a probe binary for its healthcheck
+- `cloudflared`
+
+## Upstream
+
+- Website: [https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)
+- GitHub: [https://github.com/cloudflare/cloudflared](https://github.com/cloudflare/cloudflared)

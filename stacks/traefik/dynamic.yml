@@ -1,0 +1,14 @@
+http:
+  routers:
+    traefik-manager:
+      rule: Host(`tm.example.com`)
+      entryPoints:
+        - websecure-internal
+      service: traefik-manager
+      tls:
+        certResolver: cloudflare
+  services:
+    traefik-manager:
+      loadBalancer:
+        servers:
+          - url: http://traefik-manager:5000

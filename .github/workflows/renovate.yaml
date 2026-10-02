@@ -1,0 +1,19 @@
+name: renovate
+
+on:
+  push:
+    branches:
+      - "__reference_only__"
+  pull_request:
+    branches:
+      - "__reference_only__"
+
+jobs:
+  renovate:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reference only
+        run: |
+          echo "This workflow is published as an example."
+          echo "Copy and adapt it in your own repository before enabling it."

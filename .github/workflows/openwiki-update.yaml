@@ -1,0 +1,249 @@
+name: OpenWiki Update
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Sunday 06:00 UTC
+    - cron: "0 6 * * 0"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    # This workflow's wall time is spent waiting on OpenRouter rather than on
+    # CPU, so self-hosted time costs nothing where hosted minutes bill it.
+    runs-on: [self-hosted, storage-host]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install OpenWiki
+        run: npm install --global openwiki
+
+      - name: Pick candidate models from openrouter-model-list
+        # models-openwiki.json is score-sorted; keep every sanity_ok model as a
+        # fallback candidate. sanity_ok only proves a smoke call succeeded, not
+        # that the model survives a full run, so a single id is not enough.
+        # Both Nemotron-3 models pass that smoke call and then die in the
+        # planning phase of every real run, so they are denied here rather than
+        # given attempts a working candidate needs.
+        run: |
+          MODELS=$(curl -sf https://raw.githubusercontent.com/smoochy/openrouter-model-list/main/models-openwiki.json \
+            | jq -r '[.models[]
+                       | select(.sanity_ok)
+                       | select(.id != "nvidia/nemotron-3-super-120b-a12b:free")
+                       | select(.id != "nvidia/nemotron-3-ultra-550b-a55b:free")
+                       | .id] | join(" ")')
+          if [ -z "$MODELS" ]; then
+            echo "No usable sanity_ok model in models-openwiki.json" >&2
+            exit 1
+          fi
+          echo "Candidate models: $MODELS"
+          echo "OPENWIKI_MODEL_IDS=$MODELS" >> "$GITHUB_ENV"
+
+      - name: Run OpenWiki
+        # --update also handles the first run for code docs when env vars are set.
+        # Each candidate gets two real attempts before the loop falls through to
+        # the next one: OpenRouter answers a non-retryable provider 404 often
+        # enough to kill most runs, and langchain never retries it, so a single
+        # shot per model throws away a working model on one bad call. A retry
+        # resumes from openwiki/.run.json rather than restarting.
+        timeout-minutes: 60
+        run: |
+          # The attempt below pipes openwiki into tee, and the default step
+          # shell is `bash -e` without pipefail, so the pipeline reports tee's
+          # exit status and every openwiki failure reads as a success. Run
+          # 34217074531 went green that way while openwiki had died on "Cannot
+          # read properties of undefined (reading '0')", and the workflow opened
+          # a pull request holding only the interrupted run state.
+          set -o pipefail
+
+          # Two real attempts per candidate, and no global cap. The brake is
+          # wall clock (timeout-minutes on this step), not a request count: the
+          # earlier global cap of nine spent every attempt on rate limits
+          # before a working candidate was ever reached.
+          MAX_TRIES=2
+          # A rate-limited attempt is free, but not infinitely: after this many
+          # waivers on one candidate the next 429 counts as a real attempt, so a
+          # permanently contended model cannot hold the run until it times out.
+          MAX_WAIVERS=5
+          # Shared capacity is transient - it cleared inside two minutes in run
+          # 34332807927 in smooCorp/mengram - so the candidate is worth a short
+          # wait before the run gives up on it. There is no reset header on this
+          # shape, hence the fixed sleep, and a separate counter so it cannot
+          # eat the waivers a per-minute 429 needs.
+          MAX_SHARED_RETRIES=2
+          SHARED_WAIT=${SHARED_WAIT:-60}
+          # A single attempt must not be able to spend the step. Run
+          # 34334491234 in smooCorp/mengram handed
+          # nvidia/nemotron-3.5-lightning:free the whole hour: it printed
+          # nothing at all for 59 minutes, the step timed out, and the third
+          # candidate was never reached. Every attempt is capped, and the cap is
+          # also clamped to what is left of the run so the last attempt cannot
+          # start work it has no time to finish. The successful attempt of run
+          # 34332807927 took 14m35s, so 25 minutes is a hang, not a slow model.
+          # SIGTERM first, SIGKILL ten seconds later, since the write pattern of
+          # openwiki/.run.json is not ours to assume.
+          ATTEMPT_MAX=${ATTEMPT_MAX:-1500}
+          # Below the step's own 60 minutes, so the loop reports which candidate
+          # ran out of budget instead of being killed mid-sentence.
+          budget_end=$(( $(date -u +%s) + ${STEP_BUDGET_SECONDS:-3300} ))
+          MIN_ATTEMPT=${MIN_ATTEMPT:-300}
+          log="$RUNNER_TEMP/openwiki-attempt.log"
+
+          for model in $OPENWIKI_MODEL_IDS; do
+            reset_used=0
+            tries=0
+            waivers=0
+            shared_retries=0
+            while [ "$tries" -lt "$MAX_TRIES" ]; do
+              remaining=$(( budget_end - $(date -u +%s) ))
+              if [ "$remaining" -lt "$MIN_ATTEMPT" ]; then
+                echo "Less than ${MIN_ATTEMPT}s of the step budget left; stopping at $model." >&2
+                break 2
+              fi
+              attempt_cap=$ATTEMPT_MAX
+              if [ "$remaining" -lt "$attempt_cap" ]; then
+                attempt_cap=$remaining
+              fi
+
+              echo "::group::OpenWiki with $model (attempt $((tries + 1)) of $MAX_TRIES, up to ${attempt_cap}s)"
+              OPENWIKI_MODEL_ID="$model" timeout -k 10s "${attempt_cap}s" openwiki code --update --print 2>&1 | tee "$log" && status=0 || status=$?
+              echo "::endgroup::"
+
+              # Exit 0 is not evidence that anything was written. Run
+              # 34342504305 in smooCorp/mengram ended green with every one of
+              # its ten pages logged as "restored after its worker exited
+              # without submitting", no error line anywhere, and opened a pull
+              # request carrying an empty page manifest and a .last-update.json
+              # reading "status": "interrupted". openwiki records its own
+              # verdict there, so that file decides, not the exit code.
+              if [ "$status" -eq 0 ]; then
+                if grep -q '"status": *"complete"' openwiki/.last-update.json 2>/dev/null; then
+                  exit 0
+                fi
+                tries=$((tries + 1))
+                echo "Attempt $tries with $model exited 0 without completing the update; openwiki/.last-update.json is not \"complete\"."
+                continue
+              fi
+
+              # 124 is timeout's own verdict: the attempt produced nothing in
+              # the time it was given. Nothing in the log says anything about
+              # the model, so the error-shape checks below would only misread
+              # a stale message; spend the attempt and move on.
+              if [ "$status" -eq 124 ] || [ "$status" -eq 137 ]; then
+                tries=$((tries + 1))
+                echo "Attempt $tries with $model was killed after ${attempt_cap}s without finishing."
+                continue
+              fi
+
+              # The daily free budget is spent. No later candidate or attempt can
+              # succeed, and the run never reached the defect, so fail loudly.
+              if grep -q "free-models-per-day-high-balance" "$log"; then
+                echo "OpenRouter daily free-model budget is spent; aborting." >&2
+                exit 1
+              fi
+
+              # A shared-capacity 429 is a per-model limit shared with every
+              # other OpenRouter user, so waiting on it is a bet on strangers
+              # letting go - but a short bet is worth it. Run 34230416373 spent
+              # all five waivers on cohere/north-mini-code:free and then burned
+              # a real attempt, while run 34332807927 saw the same model clear
+              # and carry a whole documentation update. Two short waits, then
+              # the next candidate; the attempt budget stays untouched either
+              # way.
+              if grep -q "openrouter_shared_capacity" "$log"; then
+                if [ "$shared_retries" -lt "$MAX_SHARED_RETRIES" ]; then
+                  shared_retries=$((shared_retries + 1))
+                  echo "Shared capacity is exhausted for $model; waiting ${SHARED_WAIT}s (retry $shared_retries of $MAX_SHARED_RETRIES)."
+                  sleep "$SHARED_WAIT"
+                  continue
+                fi
+                echo "Shared capacity stayed exhausted for $model; trying next candidate."
+                break
+              fi
+
+              # An account-wide per-minute 429 says nothing about the
+              # model: the attempt never reached it. Wait out the window
+              # OpenRouter reports in X-RateLimit-Reset (milliseconds since the
+              # epoch, logged escaped inside a JSON error body, hence the loose
+              # match) and retry the same candidate without spending an
+              # attempt. The 90-second cap sits above both observed windows, so
+              # a missing or absurd header cannot freeze the run.
+              if [ "$waivers" -lt "$MAX_WAIVERS" ] && grep -qE '"code[\\]*": *429|Rate limit exceeded' "$log"; then
+                waivers=$((waivers + 1))
+                reset=$(grep -oiE 'X-RateLimit-Reset[^0-9]{0,8}[0-9]+' "$log" | grep -oE '[0-9]+$' | tail -n 1)
+                wait_s=5
+                if [ -n "$reset" ]; then
+                  if [ "$reset" -gt 100000000000 ]; then
+                    reset=$((reset / 1000))
+                  fi
+                  wait_s=$((reset - $(date -u +%s) + 1))
+                fi
+                if [ "$wait_s" -lt 1 ]; then
+                  wait_s=1
+                fi
+                if [ "$wait_s" -gt 90 ]; then
+                  wait_s=90
+                fi
+                echo "Rate limited on $model; waiting ${wait_s}s (waiver $waivers of $MAX_WAIVERS)."
+                sleep "$wait_s"
+                continue
+              fi
+
+              # Error A strands a page: the claims pass writes the Markdown
+              # without its sidecar, and .run.json then carries that page into
+              # every later attempt. Reset once per candidate to clear it;
+              # otherwise keep the resume, which is what makes a retry cost a
+              # fraction of a full run.
+              if [ "$reset_used" -eq 0 ] && grep -q "Cannot advance page coverage" "$log"; then
+                echo "Page-coverage failure; resetting openwiki/ once before retrying $model."
+                git checkout -- openwiki || echo "Nothing tracked to restore under openwiki/."
+                git clean -fd openwiki
+                reset_used=1
+                continue
+              fi
+
+              tries=$((tries + 1))
+              echo "Attempt $tries with $model failed; retrying from openwiki/.run.json."
+            done
+            echo "Done with $model; trying the next candidate."
+          done
+          echo "All candidate models failed." >&2
+          exit 1
+        env:
+          OPENWIKI_TELEMETRY_DISABLED: "1"
+          OPENWIKI_PROVIDER: openrouter
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # OpenRouter free tier allows 16 requests/min; retry through 429s
+          # instead of dying on the first one (run 29665056382).
+          OPENWIKI_PROVIDER_RETRY_ATTEMPTS: "10"
+          # LangSmith key belongs to the EU region; without this endpoint the
+          # tracer hits the US ingest API and spams 403 retries (run 29664690975).
+          LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGCHAIN_PROJECT: openwiki
+          LANGCHAIN_TRACING_V2: "true"
+
+      - name: Create OpenWiki update pull request
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          add-paths: |
+            openwiki
+            CLAUDE.md
+          branch: openwiki/update
+          commit-message: "docs: update OpenWiki"
+          title: "docs: update OpenWiki"
+          body: |
+            Automated OpenWiki documentation update.
+
+            This PR was generated by the scheduled OpenWiki workflow.

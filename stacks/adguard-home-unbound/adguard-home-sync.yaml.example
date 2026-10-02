@@ -1,0 +1,42 @@
+# Example configuration for adguard-home-sync.
+# Replace all placeholder values before deploying.
+cron: "*/60 */24 * * *"
+
+origin:
+  url: http://192.0.2.2
+  # apiPath: define an api path if other than "/control"
+  # insecureSkipVerify: true # disable tls check
+  username: your-origin-username
+  password: your-origin-password
+
+# replicas instances (optional, if more than one)
+replicas:
+  - url: http://adguard-home-unbound
+    username: your-replica-username
+    password: your-replica-password
+  #- url: http://192.0.2.4
+  #  username: your-second-replica-username
+  #  password: your-second-replica-password
+
+# Configure the sync API server, disabled if api port is 0
+api:
+  port: 8080
+  username: your-sync-api-username
+  password: your-sync-api-password
+
+features:
+  dns:
+    accessLists: false
+    serverConfig: true
+    rewrites: true
+  dhcp:
+    serverConfig: true
+    staticLeases: true
+  generalSettings: true
+  queryLogConfig: false
+  statsConfig: true
+  clientSettings: true
+  services: true
+  filters: true
+  theme: true
+  tlsConfig: false

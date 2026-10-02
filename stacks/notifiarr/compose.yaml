@@ -1,0 +1,187 @@
+services:
+  notifiarr:
+    container_name: Notifiarr
+    # notifiarr.com keys a client's site-tunnel preference (primary and backup
+    # region) to the hostname the client reports. Without this the hostname is
+    # the random container ID, so every recreate registers as a brand new client
+    # and the website hands back the nine-region default list with carolina
+    # first, silently replacing the germany/paris pair.
+    hostname: homelab-host-notifiarr
+    deploy:
+      resources:
+        limits:
+          pids: 2048
+    # The whole client configuration lives here rather than in the
+    # `notifiarr.conf` the client writes into its own appdata. That file is not
+    # tracked anywhere and it is stored bzip2-compressed, so it is neither
+    # reviewable nor restorable from this repository: a lost appdata directory
+    # used to mean re-entering every instance, every key and every password by
+    # hand in the web UI. Declared here, a fresh container reaches the same
+    # state on first start. The client still writes its conf file and still
+    # wins on anything not named below, so this is an overlay, not a takeover.
+    #
+    # One thing deliberately absent: the site tunnel. Its primary and backup
+    # region are not client configuration at all - notifiarr.com keys them to
+    # the hostname the client reports, which is what `hostname` above pins.
+    environment:
+      - DN_API_KEY=${NOTIFIARR_API_KEY}
+      # The client's own identity on notifiarr.com. Without it a recreated
+      # container registers as a new client, for the same reason the hostname
+      # is pinned.
+      - DN_HOST_ID=${NOTIFIARR_HOST_ID}
+      # Already encrypted by the web UI; it is a bcrypt hash, not the password.
+      - DN_UI_PASSWORD=${NOTIFIARR_UI_PASSWORD}
+      - DN_BIND_ADDR=0.0.0.0:5454
+      - DN_HTTP_LOG=/config/http.log
+      - DN_LOG_FILE=/config/app.log
+      - DN_LOG_FILE_MB=100
+      - DN_LOG_FILES=0
+      - DN_FILE_MODE=0600
+      # Logging goes to the files above, so nothing is written to the container
+      # log as well.
+      - DN_QUIET=true
+      - DN_NO_UPLOADS=true
+      - DN_SERIAL=true
+      - DN_RETRIES=4
+      - DN_TIMEOUT=1m
+      - DN_SNAPSHOT_NVIDIA_DISABLED=true
+      # The applications. Each block is one entry in a list, addressed by its
+      # index: `name` is what enables the service check and puts the row on the
+      # dashboard, so an instance without one is still synced and monitored by
+      # the website but not checked.
+      - DN_SONARR_0_NAME=Sonarr
+      - DN_SONARR_0_URL=${NOTIFIARR_SONARR_URL}
+      - DN_SONARR_0_API_KEY=${NOTIFIARR_SONARR_API_KEY}
+      - DN_SONARR_0_USERNAME=${NOTIFIARR_SONARR_USERNAME}
+      - DN_SONARR_0_PASSWORD=${NOTIFIARR_SONARR_PASSWORD}
+      - DN_SONARR_0_INTERVAL=30m
+      - DN_SONARR_0_TIMEOUT=1m
+      - DN_SONARR_0_DELETES=5
+      # The upload lane's Sonarr as a second instance (#2175). It is registered
+      # for one reason: the website's custom format and quality profile sync
+      # writes into every instance the client reports, so the lane gets the same
+      # profiles as the main Sonarr instead of Sonarr's stock ones. No service
+      # check is wanted, so the name is left unset - a named instance would add
+      # a second Sonarr row to the dashboard for an instance nobody watches.
+      - DN_SONARR_1_URL=${NOTIFIARR_SONARR_LANE_URL}
+      - DN_SONARR_1_API_KEY=${NOTIFIARR_SONARR_LANE_API_KEY}
+      - DN_RADARR_0_NAME=Radarr
+      - DN_RADARR_0_URL=${NOTIFIARR_RADARR_URL}
+      - DN_RADARR_0_API_KEY=${NOTIFIARR_RADARR_API_KEY}
+      - DN_RADARR_0_USERNAME=${NOTIFIARR_RADARR_USERNAME}
+      - DN_RADARR_0_PASSWORD=${NOTIFIARR_RADARR_PASSWORD}
+      - DN_RADARR_0_INTERVAL=30m
+      - DN_RADARR_0_TIMEOUT=1m
+      - DN_RADARR_0_DELETES=5
+      - DN_PROWLARR_0_NAME=Prowlarr
+      - DN_PROWLARR_0_URL=${NOTIFIARR_PROWLARR_URL}
+      - DN_PROWLARR_0_API_KEY=${NOTIFIARR_PROWLARR_API_KEY}
+      - DN_PROWLARR_0_USERNAME=${NOTIFIARR_PROWLARR_USERNAME}
+      - DN_PROWLARR_0_PASSWORD=${NOTIFIARR_PROWLARR_PASSWORD}
+      - DN_PROWLARR_0_INTERVAL=30m
+      - DN_PROWLARR_0_TIMEOUT=1m
+      # qBittorrent is reached by host address rather than by container name:
+      # its own container runs in the VPN namespace, so it has no address on
+      # this network to resolve.
+      - DN_QBIT_0_NAME=QBit
+      - DN_QBIT_0_URL=${NOTIFIARR_QBIT_URL}
+      - DN_QBIT_0_USER=${NOTIFIARR_QBIT_USER}
+      - DN_QBIT_0_PASS=${NOTIFIARR_QBIT_PASS}
+      - DN_QBIT_0_INTERVAL=5m
+      - DN_QBIT_0_TIMEOUT=10s
+      - DN_SABNZBD_0_NAME=SabNZB
+      - DN_SABNZBD_0_URL=${NOTIFIARR_SABNZBD_URL}
+      - DN_SABNZBD_0_API_KEY=${NOTIFIARR_SABNZBD_API_KEY}
+      - DN_SABNZBD_0_INTERVAL=30m
+      - DN_SABNZBD_0_TIMEOUT=10s
+      - DN_PLEX_URL=${NOTIFIARR_PLEX_URL}
+      - DN_PLEX_TOKEN=${NOTIFIARR_PLEX_TOKEN}
+      - DN_PLEX_INTERVAL=30m
+      - DN_PLEX_TIMEOUT=1m
+      - DN_TAUTULLI_NAME=Tautulli
+      - DN_TAUTULLI_URL=${NOTIFIARR_TAUTULLI_URL}
+      - DN_TAUTULLI_API_KEY=${NOTIFIARR_TAUTULLI_API_KEY}
+      - DN_TAUTULLI_INTERVAL=30m
+      - DN_TAUTULLI_TIMEOUT=1m
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+    # Notifiarr serves its UI on 5454 and exposes no dedicated health endpoint, so the
+    # probe falls back to the root path.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://127.0.0.1:5454/ || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    image: golift/notifiarr:v0.9.7@sha256:2b0a8784d8a43177cbc5a19110e7eb066d9321572c3352eda79c0a89898c7735
+    networks:
+      smoonet:
+    ports:
+      - "5454:5454/tcp"
+    restart: unless-stopped
+    volumes:
+      - /etc/machine-id:/etc/machine-id:ro
+      - /mnt/disk1:/storage/1:ro
+      - /mnt/user/appdata/Notifiarr:/config:rw
+      - /var/run/utmp:/var/run/utmp:ro
+    ## Start Traefik Config
+    labels:
+      - traefik.enable=true
+      # # Internal
+      - traefik.http.routers.${SERVICE}-internal.entrypoints=websecure-internal
+      - traefik.http.routers.${SERVICE}-internal.middlewares=chain-internal@file
+      - traefik.http.routers.${SERVICE}-internal.priority=5000
+      - traefik.http.routers.${SERVICE}-internal.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-internal.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-internal.tls=true
+      # # External
+      - traefik.http.routers.${SERVICE}-external.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-external.middlewares=chain-external@file
+      - traefik.http.routers.${SERVICE}-external.priority=10
+      - traefik.http.routers.${SERVICE}-external.rule=Host(`${TRAEFIK_EXTERNAL_URL}`)
+      - traefik.http.routers.${SERVICE}-external.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-external.tls=true
+      # # HTTP-Header
+      - traefik.http.routers.${SERVICE}-bypass.entrypoints=websecure-external
+      - traefik.http.routers.${SERVICE}-bypass.middlewares=chain-external-bypass@file
+      - traefik.http.routers.${SERVICE}-bypass.priority=2500
+      - traefik.http.routers.${SERVICE}-bypass.rule=Host(`${TRAEFIK_EXTERNAL_URL}`) && Header(`${SPECIAL_HEADER_NAME}`, `${SPECIAL_HEADER_SECRET}`)
+      - traefik.http.routers.${SERVICE}-bypass.service=${SERVICE}
+      - traefik.http.routers.${SERVICE}-bypass.tls=true
+      # Service port (must match the port Komodo listens on INSIDE the container)
+      - traefik.docker.network=smoonet
+      - traefik.http.services.${SERVICE}.loadbalancer.server.url=${TRAEFIK_INTERNAL_URL}
+      ## End Traefik Config
+      # Uptime Kuma monitor, owned by AutoKuma. Rebuild of the hand-built http monitor
+      # id 32, migration wave 3b. No basic_auth and no headers: #1809 measured the endpoint
+      # answering 200 without credentials, and the columns on the old monitor are leftovers
+      # of a Traefik middleware that no longer exists.
+      - kuma.notifiarr.http.name=notifiarr - notifiarr
+      - kuma.notifiarr.http.url=https://notifiarr.example.com
+      - kuma.notifiarr.http.method=GET
+      - 'kuma.notifiarr.http.accepted_statuscodes=["200-299"]'
+      - kuma.notifiarr.http.max_redirects=10
+      - kuma.notifiarr.http.http_body_encoding=json
+      - kuma.notifiarr.http.timeout=4
+      - kuma.notifiarr.http.interval=300
+      - kuma.notifiarr.http.max_retries=1
+      - kuma.notifiarr.http.retry_interval=300
+      - kuma.notifiarr.http.resend_interval=0
+      - kuma.notifiarr.http.ignore_tls=false
+      - kuma.notifiarr.http.expiry_notification=true
+      - kuma.notifiarr.http.upside_down=false
+      - 'kuma.notifiarr.http.notification_id_list={"1": true}'
+      # Komodo restore
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      # Unraid metadata
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/notifiarr.png
+      - net.unraid.docker.webui=${UNRAID_WEBGUI_URL}
+networks:
+  smoonet:
+    external: true

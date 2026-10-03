@@ -113,12 +113,22 @@ services:
       - smoonet
 
   mongo:
-    # Pinned to 8.2 because the on-disk data carries featureCompatibilityVersion
-    # 8.2 and mongod 9.0 refuses to start on it (exit 62, "Wrong mongod version").
-    # The untagged reference used to pull `latest`, which silently jumped to 9.0.2
-    # and broke the whole stack. Bump this tag only together with an explicit
-    # setFeatureCompatibilityVersion step and a fresh database backup.
-    image: mongo:8.2
+    # Pinned to the 9.0 LTS line, and held there by an `allowedVersions` rule in
+    # `config.js`. A mongod only starts on a featureCompatibilityVersion it still
+    # accepts - its own, the previous rapid release, and the last LTS - so moving
+    # this tag across either boundary without first raising the FCV stops the
+    # database dead with exit 62, "Wrong mongod version", and Komodo then serves
+    # no login page because its core has no database behind it. That is how the
+    # untagged reference this line used to carry took the stack down when `latest`
+    # moved to 9.0.2 while the data sat at FCV 8.2.
+    #
+    # Changing this tag is therefore never only a tag change. The procedure is one
+    # major at a time, forwards only, each step its own deploy: raise the binary,
+    # confirm the stack is healthy, then `setFeatureCompatibilityVersion` to match,
+    # and take a fresh `mongodump` before the first step. MongoDB supports no
+    # downgrade path that skips a release, so a tag that is already too new for
+    # the data leaves restoring that dump as the way back.
+    image: mongo:9.0
     container_name: komodo-mongo-db
     labels:
       - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers
@@ -128,8 +138,18 @@ services:
     # ports:
     #   - 27017:27017
     volumes:
-      - /mnt/user/appdata/komodo/mongo-config:/data/db
-      - /mnt/user/appdata/komodo/mongo-db:/data/configdb
+      # One mount, and the directory name says what is in it. These two used to be
+      # crossed - `mongo-config` carried the database on /data/db while `mongo-db`
+      # sat empty on /data/configdb - which made every backup or restore that
+      # trusted the directory names wrong. /data/configdb is gone rather than
+      # renamed: only a sharded cluster's config server writes there, so on a
+      # standalone mongod it was an always-empty directory whose only effect was
+      # to mislead. The image still declares it as a VOLUME, so Docker supplies an
+      # anonymous one, which Compose carries across a recreate. Note that Docker
+      # creates a missing bind source as an empty directory, so a wrong path here
+      # does not fail - it starts an empty database instead, which is the more
+      # expensive way to find out.
+      - /mnt/user/appdata/komodo/mongo-data:/data/db
     # Health probe. Deviation from the HTTP default: this is a database with no HTTP
     # surface, so the native client answers instead, mirroring pg_isready on the
     # Postgres services. mongosh starts a Node process per probe, which is the most
@@ -320,14 +340,6 @@ services:
       - /mnt/user/appdata/qbittorrent/tuning:/mnt/user/appdata/qbittorrent/tuning
     networks:
       - smoonet
-
-volumes:
-  # Mongo
-  mongo-data:
-  mongo-config:
-  # Komodo Core v2
-  keys:
-
 
 networks:
   # Declared external deliberately, although this stack is the one that created

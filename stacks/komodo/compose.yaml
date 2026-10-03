@@ -113,10 +113,12 @@ services:
       - smoonet
 
   mongo:
-    # Untagged, and unpinned for the same reason as `dockerproxy` above - see the
-    # comment there and docs/image-pinning.md. A tagless reference carries no
-    # version for Renovate to track, so it is also mechanically unreachable.
-    image: mongo
+    # Pinned to 8.2 because the on-disk data carries featureCompatibilityVersion
+    # 8.2 and mongod 9.0 refuses to start on it (exit 62, "Wrong mongod version").
+    # The untagged reference used to pull `latest`, which silently jumped to 9.0.2
+    # and broke the whole stack. Bump this tag only together with an explicit
+    # setFeatureCompatibilityVersion step and a fresh database backup.
+    image: mongo:8.2
     container_name: komodo-mongo-db
     labels:
       - komodo.skip=true # Prevent Komodo from stopping with StopAllContainers

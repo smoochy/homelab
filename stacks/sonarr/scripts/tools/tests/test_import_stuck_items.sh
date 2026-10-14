@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # self-check-inputs: stacks/sonarr/scripts/tools/
-# Runs import_stuck_items.sh against a fake curl serving a fixture queue, manual
+# Runs the import sweep of queue_housekeeping.sh against a fake curl serving a fixture queue, manual
 # import candidates and episode files. The cases that matter: an existing file is
 # only ever deleted for a candidate that actually scores higher, and a release
 # Sonarr could not match to a series still imports because the queue entry knows
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-script="$here/../import_stuck_items.sh"
+script="$here/../queue_housekeeping.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -74,6 +74,11 @@ write_episodefile() {
     fi
 }
 
+# The grab row Sonarr wrote when it sent the release to the download client. It
+# carries the series and episode ids even for a release whose name matches
+# nothing; a multi-episode grab writes one row per episode.
+printf '{"records":[{"eventType":"grabbed","seriesId":42,"episodeId":501,"downloadId":"AAA"}]}\n' > "$work/history.json"
+
 cat > "$work/curl" <<'SH'
 #!/usr/bin/env bash
 args=("$@")
@@ -91,6 +96,7 @@ case "$method:$url" in
     GET:*/api/v3/manualimport*) cat "$WORK/manualimport.json" ;;
     GET:*/api/v3/episodefile/*) cat "$WORK/episodefile.json" ;;
     GET:*/api/v3/episode/*)     cat "$WORK/episode.json" ;;
+    GET:*/api/v3/history*)      cat "$WORK/history.json" ;;
 esac
 exit 0
 SH
@@ -184,6 +190,19 @@ sed -i 's/"trackedDownloadState":"importPending"/"trackedDownloadState":"importB
 run
 grep -q '"name":"ManualImport"' "$work/bodies.log" || fail "an importBlocked item must be swept"
 sed -i 's/"trackedDownloadState":"importBlocked"/"trackedDownloadState":"importPending"/' "$work/queue.json"
+
+# An item Sonarr matched to nothing at all: the queue carries no ids and the
+# candidate carries none either, so only the grab's history rows can name the
+# series and episode. Without them the release sits in Activity until a human
+# imports it.
+write_unmatched_candidate
+write_episodefile none
+sed -i 's/"seriesId":42,"episodeId":501,"status":"completed"/"seriesId":0,"episodeId":0,"status":"completed"/' "$work/queue.json"
+run
+grep -q 'includeUnknownSeriesItems=true' "$work/requests.log" || fail "the queue must include items with no series match"
+grep -q '"seriesId":42' "$work/bodies.log" || fail "an item with no series anywhere must import against the grab's history seriesId"
+grep -q '"episodeIds":\[501\]' "$work/bodies.log" || fail "an item with no episode anywhere must import against the grab's history episodeId"
+sed -i 's/"seriesId":0,"episodeId":0,"status":"completed"/"seriesId":42,"episodeId":501,"status":"completed"/' "$work/queue.json"
 
 # Sonarr's connection test exits clean without reading the queue.
 : > "$work/requests.log"

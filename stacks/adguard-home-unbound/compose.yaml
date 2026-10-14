@@ -3,7 +3,7 @@ services:
     container_name: adguard-home-sync
     depends_on:
       - adguard-home-unbound
-    image: ghcr.io/linuxserver/adguardhome-sync:v0.9.3-ls174@sha256:36a67550da8b3ca9074b595e22633d74178382c415317465eae81414e06c3dd8
+    image: ghcr.io/linuxserver/adguardhome-sync:v0.9.4-ls176@sha256:290cb744c10d37b926ee3d065b29c03c128ad561c63053c5a4154a14671ffd91
     restart: unless-stopped
 
     # Network config

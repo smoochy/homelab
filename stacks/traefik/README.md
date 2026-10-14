@@ -49,7 +49,6 @@ This stack directory stores the `compose.yaml`, `README.md`, and tracked `.env.e
 
 - `traefik.yml` loads the file provider from the `rules/` directory; no HTTP provider endpoint is enabled. Every file in that directory is merged, so a new set of routers is added by dropping a file in, not by editing an existing one.
 - `rules/base.yml` stores the repo-managed baseline middlewares, routers, and services.
-- `rules/crowdsec-manager.yml` is reserved for the dynamic configuration `crowdsec-manager` generates; it stays a comment-only file until that happens.
 - `dynamic.yml` is no longer read by Traefik. It is still mounted into `traefik-manager`, which points at it through `TRAEFIK_DYNAMIC_CONFIG`, and it holds only the `traefik-manager` router itself.
 - Traefik reads Docker through the read-only socket proxy: `providers.docker.endpoint` is `tcp://dockerproxy-ro:2375`, and `DOCKER_HOST` in `compose.yaml` matches it. `DOCKER_HOST` wins over the `endpoint:` setting, so moving the endpoint needs a recreate, not a restart (measured on 2026-08-19).
 - `traefik-manager` provides a web UI for route, middleware, service, certificate, log, and static configuration operations against the same Traefik runtime files.

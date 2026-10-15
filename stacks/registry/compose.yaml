@@ -126,7 +126,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: quiq/registry-ui:0.12.0@sha256:0d066cddfb87427d1907801cd5f955a5af4633ac3bae25273184dd80a96289be
+    image: quiq/registry-ui:0.12.1@sha256:df6c56977d354d504cbb303a4dfc78aba13b03fd5ef7c91ceaf63b9cb95aab3e
     networks:
       smoonet:
     ports:

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # self-check-inputs: stacks/radarr/scripts/tools/
-# Runs supersede_queue.sh against a fake curl that serves a fixture queue and
+# Runs the On Grab path of queue_housekeeping.sh against a fake curl that serves a fixture queue and
 # records every request, so the deletions it would issue are asserted without a
 # Radarr anywhere near it.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-script="$here/../supersede_queue.sh"
+script="$here/../queue_housekeeping.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -77,7 +77,7 @@ done
 grep -q 'movieIds=1701' "$work/requests.log" || fail "queue not filtered by movieIds"
 
 # Any event other than a grab is a no-op, Radarr's connection test included.
-for ev in Test Download Rename MovieDelete; do
+for ev in Test Rename MovieDelete; do
     run radarr_eventtype="$ev" radarr_movie_id=1701 radarr_release_customformatscore=22800
     [ "$(deletes)" = "0" ] || fail "$ev must be a no-op"
 done

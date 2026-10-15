@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # self-check-inputs: stacks/radarr/scripts/tools/
-# Runs import_stuck_items.sh against a fake curl serving a fixture queue, manual
+# Runs the import sweep of queue_housekeeping.sh against a fake curl serving a fixture queue, manual
 # import candidates and movie files. The case that matters is the guard the
 # predecessor lacked: an existing file is only ever deleted for a candidate that
 # actually scores higher.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-script="$here/../import_stuck_items.sh"
+script="$here/../queue_housekeeping.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -70,6 +70,10 @@ write_unmatched_candidate() {
 JSON
 }
 
+# The grab row Radarr wrote when it sent the release to the download client. It
+# carries the movie id even for a release whose name matches nothing.
+printf '{"records":[{"eventType":"grabbed","movieId":1701,"downloadId":"AAA"}]}\n' > "$work/history.json"
+
 cat > "$work/curl" <<'SH'
 #!/usr/bin/env bash
 args=("$@")
@@ -86,6 +90,7 @@ case "$method:$url" in
     GET:*/api/v3/queue*)        cat "$WORK/queue.json" ;;
     GET:*/api/v3/manualimport*) cat "$WORK/manualimport.json" ;;
     GET:*/api/v3/moviefile*)    cat "$WORK/moviefile.json" ;;
+    GET:*/api/v3/history*)      cat "$WORK/history.json" ;;
 esac
 exit 0
 SH
@@ -177,6 +182,18 @@ sed -i 's/"trackedDownloadState":"importPending"/"trackedDownloadState":"importB
 run
 grep -q '"name":"ManualImport"' "$work/bodies.log" || fail "an importBlocked item must be swept"
 sed -i 's/"trackedDownloadState":"importBlocked"/"trackedDownloadState":"importPending"/' "$work/queue.json"
+
+# An item Radarr matched to no movie at all: the queue carries movieId 0 and the
+# candidate carries none either, so only the grab's history row can name the
+# movie. Without it the release sits in Activity until a human imports it, which
+# is what happened to a German release whose title matched nothing.
+write_unmatched_candidate
+write_moviefile none
+sed -i 's/"movieId":1701,"status":"completed"/"movieId":0,"status":"completed"/' "$work/queue.json"
+run
+grep -q 'includeUnknownMovieItems=true' "$work/requests.log" || fail "the queue must include items with no movie match"
+grep -q '"movieId":1701' "$work/bodies.log" || fail "an item with no movie anywhere must import against the grab's history movieId"
+sed -i 's/"movieId":0,"status":"completed"/"movieId":1701,"status":"completed"/' "$work/queue.json"
 
 # Radarr's connection test exits clean without reading the queue.
 : > "$work/requests.log"

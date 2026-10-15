@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # self-check-inputs: stacks/sonarr/scripts/tools/
-# Runs supersede_queue.sh against a fake curl that serves a fixture queue and
+# Runs the On Grab path of queue_housekeeping.sh against a fake curl that serves a fixture queue and
 # records every request, so the deletions it would issue are asserted without a
 # Sonarr anywhere near it.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
-script="$here/../supersede_queue.sh"
+script="$here/../queue_housekeeping.sh"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
@@ -96,8 +96,8 @@ done
 # The queue is read for one series, not for the whole library.
 grep -q 'seriesId=42' "$work/requests.log" || fail "queue not filtered by seriesId"
 
-# Any event other than a grab is a no-op, Sonarr's connection test included.
-for ev in Test Download Rename SeriesDelete; do
+# An event that is neither a grab nor an import trigger is a no-op, Sonarr's connection test included.
+for ev in Test Rename SeriesDelete; do
     run sonarr_eventtype="$ev" sonarr_series_id=42 sonarr_release_episodeids=501 \
         sonarr_release_customformatscore=22800
     [ "$(deletes)" = "0" ] || fail "$ev must be a no-op"

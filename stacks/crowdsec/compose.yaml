@@ -156,7 +156,7 @@ services:
     # service exposes no HTTP endpoint and writes no heartbeat file, so the outcome
     # of a round is visible in the log store and through the machine heartbeat in
     # `cscli machines list` instead.
-    image: ghcr.io/wolffcatskyy/crowdsec-blocklist-import:3.8.0@sha256:eb141a69b023ddca4b05de3e9900d92132dafbf56e85d4881ea132d416b9192e
+    image: ghcr.io/wolffcatskyy/crowdsec-blocklist-import:3.9.0@sha256:71e36b47858f8f91f6dd92b5e6dbbc583775c7568b0459761127ce81f1944a08
     labels:
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png

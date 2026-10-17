@@ -11,6 +11,7 @@ services:
       - HOST_OS=Unraid
       - PGID=100
       - PUID=99
+      # Exact Allowed Hosts list (#4791): FQDN from .env, service name, pinned smoonet IP, LAN IP. localhost, 127.0.0.1 and the container hostname are implicit.
       - TZ=Europe/Berlin
       - UMASK=022
     healthcheck:
@@ -23,7 +24,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/linuxserver/radarr:6.4.4.10685-ls320@sha256:cfbc4fa09dc9d78f7cedc898f4ec48c6277cacedc523c4e159db6ff1c741959c
+    image: ghcr.io/linuxserver/radarr:6.4.4.10685-ls321@sha256:ea6822c956d26db648b237919f41340318f32e5b7dcc4ba702cf256a0f5f3c12
     # Network configuration. The address is pinned because the upload lane runs inside the
     # qBittorrent stack's VPN namespace, whose resolver is the tunnel's, so Docker DNS
     # never resolves "radarr" there and the media server URL has to be a literal IP.

@@ -13,7 +13,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/linuxserver/duplicati:v2.4.0.1_stable_2026-10-07-ls313@sha256:48897c65f01c7cb34a90d6aa722fd5674f3d5b9f3d82fa2f279141836826c1e3
+    image: ghcr.io/linuxserver/duplicati:v2.4.0.1_stable_2026-10-07-ls314@sha256:c3d1bce6c698b9ed7a65e2a976d867ee1bbef104858c7440d45df4e7d213b5ba
     restart: unless-stopped
     deploy:
       resources:

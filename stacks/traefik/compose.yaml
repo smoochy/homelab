@@ -1,7 +1,7 @@
 services:
   traefik:
     container_name: traefik
-    image: traefik:v3.7.15@sha256:0f6150202bc1fed72a7bd2107460eaa510e5b8a905f3fdb5b84f2c8619c33368
+    image: traefik:v3.7.16@sha256:6d3e069ee484ab1da5adfdda555a75eb9b1545ef09096a0cc7c3043101986a20
     # No `logging:` block, and deliberately not the json-file one that stood here until
     # #1105 either. This stack was the second pilot for the syslog log driver (#978);
     # that configuration is now the daemon default in /etc/docker/daemon.json, so a copy
@@ -202,7 +202,7 @@ services:
     container_name: traefik-manager
     depends_on:
       - traefik
-    image: ghcr.io/chr0nzz/traefik-manager:1.15.2@sha256:8c88f80d2679cffa4149e713dff6c166dbebd457c0c8df2503cc573302ae7b4e
+    image: ghcr.io/chr0nzz/traefik-manager:1.15.3@sha256:70e63b022165e6f2d1d0e487ff0165e559cf86fbfaddd35ee443682ca8ba77f3
     restart: unless-stopped
 
     # Network

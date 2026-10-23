@@ -1,7 +1,7 @@
 services:
   episeerr:
     container_name: episeerr
-    image: vansmak/episeerr:4.0.0@sha256:efbc829222e7ec153f39d86cecffcb86fec5bb5c52bb479e8dd0b4cfe3fff301
+    image: vansmak/episeerr:4.0.4@sha256:20b3174f3964d5e42321e2b0b3fc97c26d9099713a732364e29e3d4a0b530cff
     # healthcheck: mirrored from vansmak/episeerr. The image probes its own
     # /api/series-stats route; it ships no wget, so curl is the client here.
     healthcheck:

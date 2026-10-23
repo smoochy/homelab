@@ -261,7 +261,7 @@ services:
     # docs/image-pinning.md because this file is not its deploy source, but this
     # image is built and published from this repository's own account, so the
     # rule applies to it wherever it is referenced.
-    image: ghcr.io/smoochy/komodo-periphery-sops-age:2@sha256:a06dcb5eaa02fee914f444d27b1b70d0005e3230b0d9adf5b284e98c0a3a3de3
+    image: ghcr.io/smoochy/komodo-periphery-sops-age:2@sha256:826909e09ed6dd8dc0cb59dfcf9a7dd5fd2a596d8f08284c75b137ddf5d9cf82
     container_name: komodo-periphery
     # Periphery runs as PID 1 and does not reap the children it orphans. Every
     # container-stats refresh that exceeds its 10s budget logs `Failed to refresh

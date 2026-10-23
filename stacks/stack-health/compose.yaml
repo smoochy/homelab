@@ -5,7 +5,7 @@ services:
       context: ./poller
       args:
         # Bump with scripts/src-rev.sh - see issue #935.
-        SRC_REV: b1ee3f176505
+        SRC_REV: 13940e4210d0
     image: stack-health:local
     # Built locally and never published, so a registry pull must not be attempted.
     # A source change needs `docker compose up -d --build` on the host.
@@ -42,7 +42,7 @@ services:
 
       - APPRISE_ENDPOINT=${APPRISE_ENDPOINT}
       # Dead-man switch: the monitor trips when this container stops pushing.
-      - KUMA_PUSH_URL=${KUMA_PUSH_URL}
+      - KUMA_PUSH_URL=http://192.0.2.99:3002/api/push/${KUMA_PUSH_TOKEN}?status=up&msg=OK&ping=
 
       - STACK_HEALTH_INTERVAL_SECONDS=60
       - STACK_HEALTH_FAILURES=3
@@ -82,6 +82,16 @@ services:
 
     labels:
       - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/uptime-kuma.png
+      # AutoKuma push monitor (map #3133). The token is chosen by us and shared with KUMA_PUSH_URL above. 60/2/60 and notification 2 are what the hand-built monitor carried; resend_interval has no label on push and is dropped.
+      - kuma.poller.push.name=stack-health - poller
+      - kuma.poller.push.push_token=${KUMA_PUSH_TOKEN}
+      - kuma.poller.push.interval=60
+      - kuma.poller.push.max_retries=2
+      - kuma.poller.push.retry_interval=60
+      - 'kuma.poller.push.accepted_statuscodes=["200-299"]'
+      - kuma.poller.push.active=true
+      - kuma.poller.push.upside_down=false
+      - 'kuma.poller.push.notification_id_list={"2": true}'
 
 networks:
   smoonet:

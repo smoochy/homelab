@@ -26,6 +26,12 @@ The script sweeps those items, asks `/api/v3/manualimport` for their candidates 
 
 `--dry-run` reports what it would do and calls nothing.
 
+## Watcher and log file
+
+Sonarr sends no event when an item turns `importBlocked` after the last event already ran, so a sweep that finds nothing at grab time is never repeated. Every Grab, Import and Manual Interaction event therefore also starts a detached `--watch` run inside the container (one at a time, guarded by the lock directory `/tmp/queue_housekeeping.watch`). It sweeps every 30 seconds while the queue has items, acts on an item only once it was stuck for two consecutive ticks so it never races Sonarr's own import, tries each stuck item once, and exits after three empty ticks or six hours. `HOUSEKEEPING_WATCH=0` disables the spawn.
+
+Every run appends to `/config/logs/queue_housekeeping.log` (override with `HOUSEKEEPING_LOG`, one rotated generation at 1 MB): timestamp, pid, event, the names of the `sonarr_*` variables received and the queue overview with status and tracked download state.
+
 ## Install
 
 Settings > Connect > Add > Custom Script, once:

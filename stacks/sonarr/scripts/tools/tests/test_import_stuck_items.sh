@@ -106,6 +106,7 @@ run() {
     : > "$work/requests.log"
     : > "$work/bodies.log"
     env WORK="$work" CURL="$work/curl" SONARR_CONFIG="$work/config.xml" \
+        HOUSEKEEPING_WATCH=0 HOUSEKEEPING_LOG="$work/hk.log" \
         bash "$script" "$@" > "$work/out.log" 2>&1
 }
 
@@ -209,5 +210,17 @@ sed -i 's/"seriesId":0,"episodeId":0,"status":"completed"/"seriesId":42,"episode
 env WORK="$work" CURL="$work/curl" SONARR_CONFIG="$work/config.xml" sonarr_eventtype=Test \
     bash "$script" > "$work/out.log" 2>&1
 [ "$(count 'api/v3')" = "0" ] || fail "the test event must not call the API"
+
+# The watcher: an item stuck for two ticks is imported exactly once, the first
+# sighting only waits, and the lock directory is gone after the watcher exits.
+write_candidate 22300 '[]'
+write_episodefile none
+: > "$work/requests.log"; : > "$work/bodies.log"; : > "$work/hk.log"
+env WORK="$work" CURL="$work/curl" SONARR_CONFIG="$work/config.xml" sonarr_eventtype=Download \
+    HOUSEKEEPING_LOG="$work/hk.log" HOUSEKEEPING_WATCH_INTERVAL=0 HOUSEKEEPING_WATCH_MAX=2 \
+    HOUSEKEEPING_WATCH_LOCK="$work/watch.lock" bash "$script" --watch > "$work/out.log" 2>&1
+grep -q 'waiting one tick' "$work/hk.log" || fail "the watcher must wait one tick before acting"
+[ "$(grep -c '"name":"ManualImport"' "$work/bodies.log")" = "1" ] || fail "the watcher must import a stuck item exactly once"
+[ ! -e "$work/watch.lock" ] || fail "the watcher must release its lock on exit"
 
 echo "test_import_stuck_items: all checks passed"

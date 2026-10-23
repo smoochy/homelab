@@ -44,7 +44,8 @@ chmod +x "$work/curl"
 
 run() {
     : > "$work/requests.log"
-    env WORK="$work" CURL="$work/curl" SONARR_CONFIG="$work/config.xml" "$@" \
+    env WORK="$work" CURL="$work/curl" SONARR_CONFIG="$work/config.xml" \
+        HOUSEKEEPING_WATCH=0 HOUSEKEEPING_LOG="$work/hk.log" "$@" \
         bash "$script" > "$work/out.log" 2>&1
 }
 

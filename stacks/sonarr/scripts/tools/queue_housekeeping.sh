@@ -31,7 +31,23 @@
 # The events are the whole trigger set; no host cron is involved. Also runnable by
 # hand: with no Sonarr event in the environment it runs the import sweep.
 #
-# Usage: queue_housekeeping.sh [--dry-run]   (--dry-run applies to the import sweep)
+# A sweep is only a snapshot, and Sonarr raises no event when an item turns
+# `importBlocked` after the last event already ran: the grab fires one run, a
+# tracked-download poll fires another while the item is still `downloading`, and
+# then nothing wakes the script again. So every Grab, Import and Manual Interaction
+# event also starts a detached watcher (`--watch`, one at a time, guarded by a lock
+# directory) that repeats the sweep every 30 seconds while the queue has items, and
+# exits after the queue has stayed empty for three ticks or after six hours. It runs
+# inside the Sonarr container, started by Sonarr's own event, so no host cron is
+# involved. The watcher acts on an item only once it has been stuck for two
+# consecutive ticks, so it never races Sonarr's own import of an `importPending`
+# item, and it tries each stuck item once per watcher lifetime.
+#
+# Every run appends to /config/logs/queue_housekeeping.log (HOUSEKEEPING_LOG
+# overrides), one line per decision with the event, the pid and a snapshot of what
+# the queue held, so a release that was not imported can be traced afterwards.
+#
+# Usage: queue_housekeeping.sh [--dry-run] [--watch]   (--dry-run applies to the import sweep)
 #
 # Keep this file committed 100755. deliver.sh installs a source at the row mode only
 # when it is executable, and skips a file whose content already matches the host copy,
@@ -44,11 +60,45 @@ LOG_TAG=housekeeping
 # shellcheck source=./sonarr_api.sh
 . "$(dirname "$(readlink -f "$0")")/sonarr_api.sh"
 
+# Sonarr's own log only keeps the script's stdout for a run; the file below also
+# survives the detached watcher, whose stdout goes nowhere, and carries a
+# timestamp, a pid and the event on every line.
+LOG_FILE="${HOUSEKEEPING_LOG:-/config/logs/queue_housekeeping.log}"
+LOG_CTX="$$ ${sonarr_eventtype:-manual}"
+log() {
+    printf '[%s] %s\n' "${LOG_TAG:-sonarr}" "$*"
+    printf '%s %s %s\n' "$(date '+%F %T')" "$LOG_CTX" "$*" >> "$LOG_FILE" 2>/dev/null || true
+}
+# One generation of rotation, so the file cannot grow without bound.
+[ "$(stat -c %s "$LOG_FILE" 2>/dev/null || echo 0)" -le 1048576 ] || mv -f "$LOG_FILE" "$LOG_FILE.1" 2>/dev/null || true
+
+SELF="$(readlink -f "$0")"
 DRY_RUN=false
-[ "${1:-}" = "--dry-run" ] && { DRY_RUN=true; log "dry run, nothing will be changed"; }
+WATCH=false
+for arg in "$@"; do
+    case "$arg" in
+        --dry-run) DRY_RUN=true ;;
+        --watch) WATCH=true; LOG_CTX="$$ watch" ;;
+    esac
+done
+[ "$DRY_RUN" = true ] && log "dry run, nothing will be changed"
 
 # Sonarr tests a custom script with this event and expects a clean exit.
 [ "${sonarr_eventtype:-}" = "Test" ] && { log "test event"; exit 0; }
+
+# What Sonarr handed over, by name only: the values can carry release titles and
+# paths, the names are what tells a missing variable from a renamed one.
+[ "$WATCH" = true ] || log "start event=${sonarr_eventtype:-manual} series=${sonarr_series_id:-} download=${sonarr_download_id:-} vars=$(env | sed -n 's/^\(sonarr_[a-z_]*\)=.*/\1/p' | sort | tr '\n' ' ')"
+
+WATCH_INTERVAL="${HOUSEKEEPING_WATCH_INTERVAL:-30}"
+WATCH_MAX_SECONDS="${HOUSEKEEPING_WATCH_MAX:-21600}"
+WATCH_LOCK="${HOUSEKEEPING_WATCH_LOCK:-/tmp/queue_housekeeping.watch}"
+# Watcher state, carried between ticks. Keys are download ids (the title when a
+# release has none).
+PREV_STUCK=""
+DONE_KEYS=""
+LAST_OVERVIEW=""
+QUEUE_COUNT=0
 
 # ---- On Grab: cancel superseded queue items ---------------------------------
 
@@ -233,7 +283,7 @@ import_one() {
 }
 
 import_sweep() {
-    local queue stuck title output_path download_id queue_series_id queue_episode_id candidates count candidate
+    local queue stuck title output_path download_id queue_series_id queue_episode_id candidates count candidate overview cur_stuck key
 
     # includeUnknownSeriesItems, or the queue hides every item Sonarr could not match
     # to a series - which is precisely the stuck state this script exists for. Without
@@ -247,15 +297,34 @@ import_sweep() {
         | "\(.title)\t\(.outputPath // "")\t\(.downloadId // "")\t\(.seriesId // 0)\t\(.episodeId // 0)"
     ')"
 
+    QUEUE_COUNT="$("${JQ:-jq}" -r '.records | length' <<< "$queue")"
+    # What the queue holds, so a missed import can be read back from the log. The
+    # watcher logs it only when it changes.
+    overview="$("${JQ:-jq}" -r '.records[]? | "\(.title | .[0:60]) \(.status)/\(.trackedDownloadStatus // "-")/\(.trackedDownloadState // "-")"' <<< "$queue" | tr '\n' ';')"
+    if [ "$WATCH" != true ] || [ "$overview" != "$LAST_OVERVIEW" ]; then
+        log "queue ($QUEUE_COUNT): ${overview:-empty}"
+        LAST_OVERVIEW="$overview"
+    fi
+
     # The counts, because "no stuck imports" on its own cannot be told apart from a
     # filter that threw away the item the run was woken for.
     [ -n "$stuck" ] || {
-        log "no stuck imports ($("${JQ:-jq}" -r '.records | length' <<< "$queue") queue items, none completed+importPending/importBlocked)"
+        PREV_STUCK=""
+        [ "$WATCH" = true ] || log "no stuck imports ($QUEUE_COUNT queue items, none completed+importPending/importBlocked)"
         return 0
     }
 
+    cur_stuck=""
     while IFS=$'\t' read -r title output_path download_id queue_series_id queue_episode_id; do
         [ -n "$title" ] || continue
+        key="${download_id:-$title}"
+        cur_stuck="$cur_stuck|$key|"
+        if [ "$WATCH" = true ]; then
+            case "$DONE_KEYS" in *"|$key|"*) continue ;; esac
+            # First sight: Sonarr may still import an importPending item itself.
+            case "$PREV_STUCK" in *"|$key|"*) ;; *) log "stuck, waiting one tick: $title"; continue ;; esac
+            DONE_KEYS="$DONE_KEYS|$key|"
+        fi
         log "stuck: $title"
         [ -n "$output_path" ] || { log "  skip, no outputPath"; continue; }
 
@@ -275,7 +344,47 @@ import_sweep() {
         done <<< "$("${JQ:-jq}" -c '.[]' <<< "$candidates")"
     done <<< "$stuck"
 
+    PREV_STUCK="$cur_stuck"
+    # Keep only keys still stuck, shortcut: one try per stuck item per watcher, no retry.
+    [ "$WATCH" != true ] || DONE_KEYS="$(for k in $(printf '%s' "$DONE_KEYS" | tr -s '|' ' '); do case "$cur_stuck" in *"|$k|"*) printf '|%s|' "$k" ;; esac; done)"
     log "done"
+}
+
+# Repeats the sweep while the queue has items, because Sonarr sends no event when an
+# item turns importBlocked after the last event already ran.
+watch_queue() {
+    local start empty=0
+    if ! mkdir "$WATCH_LOCK" 2>/dev/null; then
+        if kill -0 "$(cat "$WATCH_LOCK/pid" 2>/dev/null)" 2>/dev/null; then
+            log "watcher already running"
+            return 0
+        fi
+        log "taking over stale watcher lock"
+    fi
+    echo "$$" > "$WATCH_LOCK/pid"
+    trap 'rm -rf "$WATCH_LOCK"' EXIT
+    start=$SECONDS
+    log "watcher started (interval ${WATCH_INTERVAL}s, max ${WATCH_MAX_SECONDS}s)"
+    while [ $((SECONDS - start)) -lt "$WATCH_MAX_SECONDS" ]; do
+        import_sweep >/dev/null || true
+        # The grab event fires before the item shows up in the queue, hence three.
+        if [ "$QUEUE_COUNT" = 0 ]; then
+            empty=$((empty + 1))
+            [ "$empty" -lt 3 ] || { log "queue empty, watcher exits"; return 0; }
+        else
+            empty=0
+        fi
+        sleep "$WATCH_INTERVAL"
+    done
+    log "watcher hit max runtime, exits"
+}
+
+start_watcher() {
+    [ "${HOUSEKEEPING_WATCH:-1}" = 1 ] || return 0
+    [ "$DRY_RUN" = false ] || return 0
+    [ -n "${sonarr_eventtype:-}" ] || return 0
+    nohup setsid bash "$SELF" --watch >/dev/null 2>&1 </dev/null &
+    log "watcher spawn requested"
 }
 
 # ---- Dispatch ----------------------------------------------------------------
@@ -283,8 +392,14 @@ import_sweep() {
 sonarr_api_init
 
 # An empty event is a hand run. Anything else Sonarr might send is not ours.
+if [ "$WATCH" = true ]; then
+    watch_queue
+    exit 0
+fi
+
 case "${sonarr_eventtype:-}" in
-    Grab) supersede ;;
-    Download | ManualInteractionRequired | "") import_sweep ;;
+    Grab) supersede; start_watcher ;;
+    Download | ManualInteractionRequired) import_sweep; start_watcher ;;
+    "") import_sweep ;;
     *) log "event ${sonarr_eventtype}, nothing to do" ;;
 esac

@@ -1,0 +1,66 @@
+services:
+  proton-renewer:
+    container_name: proton-renewer
+    build:
+      context: ./renewer
+      args:
+        # Bump with scripts/src-rev.sh - see issue #935.
+        SRC_REV: 7e5710f9a706
+    image: proton-renewer:local
+    # Built locally and never published, so a registry pull must not be attempted.
+    pull_policy: build
+    restart: unless-stopped
+    # Deliberately not on gluetun or any VPN network: Proton challenges logins from VPN and datacenter addresses (CAPTCHA 9001), so the renewer reaches the Proton API directly from the host.
+    networks:
+      - smoonet
+    volumes:
+      # confgen's session file (HOME=/data). Without it every start is a fresh SRP login, which is the only path to a CAPTCHA.
+      - /mnt/user/appdata/proton-renewer:/data:rw
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+    environment:
+      - HOST_CONTAINERNAME=${SERVICE}
+      - HOST_HOSTNAME=homelab-host
+      - HOST_OS=Unraid
+      - TZ=Europe/Berlin
+      - PROTON_USERNAME=${PROTON_USERNAME}
+      - PROTON_PASSWORD=${PROTON_PASSWORD}
+      - PROTONVPN_HV_TOKEN=${PROTONVPN_HV_TOKEN:-}
+      - REVOKE_ALLOWED_SERIALS=${REVOKE_ALLOWED_SERIALS:-}
+      - APPRISE_ENDPOINT=${APPRISE_ENDPOINT}
+      # Renew a persistent profile once 14 days or less remain; check daily; retry a failed tick hourly.
+      - RENEW_LEAD_DAYS=14
+      - RENEW_INTERVAL_SECONDS=86400
+      - RENEW_RETRY_SECONDS=3600
+    # healthcheck: heartbeat marker rather than an HTTP probe. This container serves nothing. The renewer touches /run/proton-renewer.heartbeat only after a tick whose listing and every due renewal succeeded, so the marker goes stale when a check or a due renewal keeps failing, and after a terminal stop (wrong password, CAPTCHA). The threshold is 48h, two of the daily ticks. The `test -f` guard makes a missing marker a designed failure; start_period covers the first tick.
+    # healthcheck: heartbeat marker, two times the daily tick.
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /run/proton-renewer.heartbeat && [ $(( $(date +%s) - $(stat -c %Y /run/proton-renewer.heartbeat) )) -lt 172800 ]",
+        ]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 10m
+    labels:
+      - com.smoochy.komodo.restore_stack=${SERVICE}
+      - net.unraid.docker.icon=https://cdn.jsdelivr.net/gh/selfhst/icons/png/proton-vpn.png
+      # AutoKuma docker monitor: container up and, through the heartbeat healthcheck above, healthy.
+      - kuma.proton-renewer.docker.name=proton-renewer - renewer
+      - kuma.proton-renewer.docker.docker_container=proton-renewer
+      - kuma.proton-renewer.docker.docker_host=1
+      - kuma.proton-renewer.docker.interval=300
+      - kuma.proton-renewer.docker.max_retries=1
+      - kuma.proton-renewer.docker.retry_interval=300
+      - kuma.proton-renewer.docker.resend_interval=0
+      - 'kuma.proton-renewer.docker.notification_id_list={"1": true}'
+
+networks:
+  smoonet:
+    external: true

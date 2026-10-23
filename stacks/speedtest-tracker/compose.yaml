@@ -14,7 +14,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/linuxserver/speedtest-tracker:v1.15.0-ls169@sha256:59518a6f2b49254b310cc2e543320dd3fbaa80381b588cd1f2bf116073698c27
+    image: ghcr.io/linuxserver/speedtest-tracker:v1.15.1-ls177@sha256:14b7850d1a0c06cc49e14546717f93996ad44e90127bb01418af293ae2d98fc7
     restart: unless-stopped
 
     # No `logging:` block. This stack was the pilot for the fleetwide log-driver switch

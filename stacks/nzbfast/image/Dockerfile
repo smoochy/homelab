@@ -5,7 +5,7 @@
 # python3 with PyYAML (tuning read, shape_payload.py, the rhd dispatcher) and a
 # wget for notifications. The scripts stay unchanged; only the tools are added.
 # Built by Komodo like repollo:local in the sabnzbd stack.
-FROM nzbfast/nzbfast:1.1.5@sha256:cd9f4fa8b743567915ae34e8aa572e54a3922806c81427fba618fb40735f43a4
+FROM nzbfast/nzbfast:1.8.0@sha256:e8ac3613b858544197114f691e3ae83828e82c0eed150d92f6219b63690e0612
 
 # The SRC_REV marker in compose.yaml moves with this context (issue #935).
 ARG SRC_REV=unset

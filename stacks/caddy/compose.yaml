@@ -24,7 +24,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.7@sha256:3db3673060073a0b8a57e5bfb64e7ce997eba901038c048dbc9b131e954b216a
+    image: ghcr.io/smoochy/caddy-cloudflare-modules:caddy-2.11.7@sha256:e13ef9b580c5264be95d89b5896ce0ab55a222740e3f2e0d552b5aca9af07e68
     restart: unless-stopped
     # Caddy Status-Seite unter caddy.example.com
     labels:

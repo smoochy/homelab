@@ -7,7 +7,7 @@ services:
   # The files have to exist on the *host*, not just in this container: for every benchmark the app creates a worker container and bind-mounts the selected config from the host path backing /config. A compose `configs:` overlay would be container-local and the worker would mount an empty directory instead.
   vpn-exit-bench-config-sync:
     container_name: vpn-exit-bench-config-sync
-    image: python:3.14.8-alpine3.24@sha256:f6a589d43c42b9e7f7dc67a12d37132491f362859a5d750607710cc56da3bc72
+    image: python:3.14.9-alpine3.24@sha256:dbeb11d16bb95c3a7e3c25c842cb9f20cbc8c18f8be0461a4a0dcc861ad386a0
     restart: "no"
     # healthcheck: one-shot container. It renders the configs, exits 0 and stays exited, so there is no running process for a probe to report on. The app below gates on `service_completed_successfully` instead, which is the same signal a probe would carry.
     configs:

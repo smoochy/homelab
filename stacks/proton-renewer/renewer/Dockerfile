@@ -1,4 +1,4 @@
-FROM golang:1.26-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS build
+FROM golang:1.27-alpine@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS build
 
 # Upstream confgen at a pinned commit. It takes the password on stdin (`--password-stdin`). One local patch: the renewal response is decoded into a strictly typed feature struct that Proton's answer for an older profile does not fit (live 2026-10-18: HTTP 200, Code 1000, renewal done server side, yet "unexpected response" client side). The struct is never read, so VPNInfo.Features takes the loose map type the list endpoint already uses. Drop the sed once upstream decodes this loosely.
 ARG CONFGEN_REV=9c01086cc41fbc425087a9d78f7e2d745206cfe8

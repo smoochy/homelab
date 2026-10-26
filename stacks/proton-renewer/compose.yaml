@@ -5,7 +5,7 @@ services:
       context: ./renewer
       args:
         # Bump with scripts/src-rev.sh - see issue #935.
-        SRC_REV: 7e5710f9a706
+        SRC_REV: 803b0a26113b
     image: proton-renewer:local
     # Built locally and never published, so a registry pull must not be attempted.
     pull_policy: build

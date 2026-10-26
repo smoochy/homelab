@@ -42,7 +42,10 @@ jobs:
                        | select(.sanity_ok)
                        | select(.id != "nvidia/nemotron-3-super-120b-a12b:free")
                        | select(.id != "nvidia/nemotron-3-ultra-550b-a55b:free")
-                       | .id] | join(" ")')
+                       | select(.id != "nvidia/nemotron-3.5-lightning:free")
+                       | select(.id != "cohere/north-mini-code:free")]
+                      | sort_by(.id != "poolside/laguna-s-2.1:free")
+                      | map(.id) | join(" ")')
           if [ -z "$MODELS" ]; then
             echo "No usable sanity_ok model in models-openwiki.json" >&2
             exit 1
@@ -57,7 +60,7 @@ jobs:
         # enough to kill most runs, and langchain never retries it, so a single
         # shot per model throws away a working model on one bad call. A retry
         # resumes from openwiki/.run.json rather than restarting.
-        timeout-minutes: 60
+        timeout-minutes: 360
         run: |
           # The attempt below pipes openwiki into tee, and the default step
           # shell is `bash -e` without pipefail, so the pipeline reports tee's
@@ -82,7 +85,7 @@ jobs:
           # shape, hence the fixed sleep, and a separate counter so it cannot
           # eat the waivers a per-minute 429 needs.
           MAX_SHARED_RETRIES=2
-          SHARED_WAIT=${SHARED_WAIT:-60}
+          SHARED_WAIT=${SHARED_WAIT:-1800}
           # A single attempt must not be able to spend the step. Run
           # 34334491234 in smooCorp/mengram handed
           # nvidia/nemotron-3.5-lightning:free the whole hour: it printed
@@ -96,7 +99,7 @@ jobs:
           ATTEMPT_MAX=${ATTEMPT_MAX:-1500}
           # Below the step's own 60 minutes, so the loop reports which candidate
           # ran out of budget instead of being killed mid-sentence.
-          budget_end=$(( $(date -u +%s) + ${STEP_BUDGET_SECONDS:-3300} ))
+          budget_end=$(( $(date -u +%s) + ${STEP_BUDGET_SECONDS:-21300} ))
           MIN_ATTEMPT=${MIN_ATTEMPT:-300}
           log="$RUNNER_TEMP/openwiki-attempt.log"
 
@@ -129,7 +132,13 @@ jobs:
               # verdict there, so that file decides, not the exit code.
               if [ "$status" -eq 0 ]; then
                 if grep -q '"status": *"complete"' openwiki/.last-update.json 2>/dev/null; then
-                  exit 0
+                  # A complete verdict over run state alone is still an empty pull request.
+                  if git status --porcelain --untracked-files=all openwiki | grep -vE '\.run\.json|\.last-update\.json' | grep -q .; then
+                    exit 0
+                  fi
+                  tries=$((tries + 1))
+                  echo "Attempt $tries with $model reported complete but wrote no documentation."
+                  continue
                 fi
                 tries=$((tries + 1))
                 echo "Attempt $tries with $model exited 0 without completing the update; openwiki/.last-update.json is not \"complete\"."
@@ -161,6 +170,14 @@ jobs:
               # and carry a whole documentation update. Two short waits, then
               # the next candidate; the attempt budget stays untouched either
               # way.
+              # Laguna's upstream shared pool is the same shape but clears on
+              # an hours scale, so it is waited out for the rest of the step
+              # budget (the loop head ends the run) instead of bounded.
+              if grep -q "upstream_provider_shared_pool" "$log"; then
+                echo "Shared capacity is exhausted for $model; waiting ${SHARED_WAIT}s."
+                sleep "$SHARED_WAIT"
+                continue
+              fi
               if grep -q "openrouter_shared_capacity" "$log"; then
                 if [ "$shared_retries" -lt "$MAX_SHARED_RETRIES" ]; then
                   shared_retries=$((shared_retries + 1))

@@ -334,6 +334,7 @@ services:
       - /mnt/user/appdata/radarr/scripts/tools:/mnt/user/appdata/radarr/scripts/tools
       - /mnt/user/appdata/sonarr/scripts/tools:/mnt/user/appdata/sonarr/scripts/tools
       - /mnt/user/appdata/sabnzbd/scripts:/mnt/user/appdata/sabnzbd/scripts
+      - /mnt/user/appdata/nzbfast/scripts:/mnt/user/appdata/nzbfast/scripts
       ## The tuning directory, so `tuning.example` can be delivered next to the
       ## live `tuning.yaml` it is the reference for (#3236). The directory, not
       ## the file: the destination does not exist before the first delivery.

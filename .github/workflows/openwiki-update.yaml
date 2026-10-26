@@ -174,8 +174,13 @@ jobs:
               # an hours scale, so it is waited out for the rest of the step
               # budget (the loop head ends the run) instead of bounded.
               if grep -q "upstream_provider_shared_pool" "$log"; then
-                echo "Shared capacity is exhausted for $model; waiting ${SHARED_WAIT}s."
-                sleep "$SHARED_WAIT"
+                # Clamped to the remaining budget so the last wait ends the
+                # step instead of being cancelled mid-sleep by timeout-minutes.
+                pool_wait=$(( budget_end - $(date -u +%s) ))
+                if [ "$pool_wait" -gt "$SHARED_WAIT" ]; then pool_wait=$SHARED_WAIT; fi
+                if [ "$pool_wait" -lt 0 ]; then pool_wait=0; fi
+                echo "Shared capacity is exhausted for $model; waiting ${pool_wait}s."
+                sleep "$pool_wait"
                 continue
               fi
               if grep -q "openrouter_shared_capacity" "$log"; then

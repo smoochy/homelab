@@ -11,7 +11,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/linuxserver/plex:1.43.5.11029-6bf8af3f0-ls329@sha256:8f655bad7dcbc5398a78f70a5af12600b4ed3424f901566ed1eaa6710e9e2334
+    image: ghcr.io/linuxserver/plex:1.43.5.11079-b3b13e506-ls330@sha256:01a53d9c7adcbb3701fbb0a4230c0a37c85453759b6b05a67356c3c7a09de08d
     restart: unless-stopped
     # Network (macvlan/br0 with static IP + smoonet for internal service reachability)
     networks:

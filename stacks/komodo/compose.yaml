@@ -16,7 +16,7 @@ services:
     # /mnt/user/appdata/_composerize/komodo/ plus the Unraid override, so a pin
     # written here would never reach the running container. Renovate cannot
     # resolve a bare `:latest` to a version either, so it would sit unmaintained.
-    image: lscr.io/linuxserver/socket-proxy:latest
+    image: lscr.io/linuxserver/socket-proxy:1.26.2-r0-ls21@sha256:fab7963b26cbccca7c4907d9732a2ca1b00738e07aa35242c07b90c240effd6f
     container_name: dockerproxy
     restart: unless-stopped
     environment:
@@ -84,7 +84,7 @@ services:
   dockerproxy-ro:
     # Unpinned for the same reason as `dockerproxy` above - see the comment there
     # and docs/image-pinning.md.
-    image: lscr.io/linuxserver/socket-proxy:latest
+    image: lscr.io/linuxserver/socket-proxy:1.26.2-r0-ls21@sha256:fab7963b26cbccca7c4907d9732a2ca1b00738e07aa35242c07b90c240effd6f
     container_name: dockerproxy-ro
     restart: unless-stopped
     environment:

@@ -28,7 +28,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/crowdsecurity/crowdsec:v1.8.1@sha256:0f2523fa61ef507f15d953045cface490cc880670c62f2755ced17524107f71a
+    image: ghcr.io/crowdsecurity/crowdsec:v1.8.2@sha256:65b74942f7e7ed5c60fde4ac15fc4ba715904c398c8b16dd451f4907d90347d4
     # AutoKuma: this container owns its Uptime Kuma monitor. See the label reference in
     # stacks/autokuma/README.md for why docker_host and notification_id_list carry Kuma's
     # numeric ids and why every field is written out.
@@ -95,7 +95,7 @@ services:
     # healthcheck: none. This container sleeps for a week at a time, so any probe
     # would report on the sleep rather than on the last round. A failed round is
     # visible in the log store, and a missed one costs nothing but a few stale rows.
-    image: ghcr.io/crowdsecurity/crowdsec:v1.8.1@sha256:0f2523fa61ef507f15d953045cface490cc880670c62f2755ced17524107f71a
+    image: ghcr.io/crowdsecurity/crowdsec:v1.8.2@sha256:65b74942f7e7ed5c60fde4ac15fc4ba715904c398c8b16dd451f4907d90347d4
     labels:
       - com.smoochy.komodo.restore_stack=crowdsec
       - net.unraid.docker.icon=https://raw.githubusercontent.com/ibracorp/app-logos/main/crowdsec/crowdsec.png

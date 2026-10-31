@@ -5,7 +5,7 @@ services:
     container_name: victorialogs-probe-busybox
     # healthcheck: none, one-shot init container. It copies the binary and exits 0, so
     # there is nothing left running to probe.
-    image: busybox:1.38.0-musl@sha256:fec1a451896b46904ea70824d256d46cb992530a731daf78259d1967e9828523
+    image: busybox:1.38.0-musl@sha256:80e38f9a1b39188b8bdb28879178edb322a4402b081a9aedda1924609decd6f6
     command: ["cp", "/bin/busybox", "/probe/busybox"]
     restart: "no"
     volumes:

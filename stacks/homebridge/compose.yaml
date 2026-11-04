@@ -25,7 +25,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: homebridge/homebridge:2026-10-30@sha256:0518217e47c66d62a1f618a5a134e7dce50d4ebcc9de2b754ca33d2593d324a1
+    image: homebridge/homebridge:2026-11-02@sha256:169416416bf303bb64bfd6c666f64d93a4f52f54db9a64e8ad553b5dc89fcea4
     # Keep HomeKit/LAN discovery on br0, but use smoonet for Docker-internal
     # services like mosquitto. MQTT clients inside Homebridge should target the
     # broker hostname `mosquitto`, not the host LAN IP.

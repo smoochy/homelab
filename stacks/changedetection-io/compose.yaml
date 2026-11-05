@@ -30,7 +30,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/browserless/chromium:v2.58.2@sha256:8aec0f8927ab3336f009ed0837b4e38f093e41a2087ec6a0268b74334aeda246
+    image: ghcr.io/browserless/chromium:v2.58.3@sha256:2d891ba17f069e7da7867bc7f86d40c36267f0108f7178c5700a8fdf6ba4eca6
     networks:
       smoonet:
     ports:

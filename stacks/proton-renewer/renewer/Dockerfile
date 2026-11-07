@@ -9,7 +9,7 @@ RUN apk add --no-cache git \
     && grep -q 'CertFeaturesSent *`json:"Features"`' /src/internal/api/types.go \
     && cd /src && CGO_ENABLED=0 go build -trimpath -o /protonvpn-wg ./cmd/protonvpn-wg
 
-FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24@sha256:ce9e1e6d23f04a0b7593445a062a9fc73ed52f8260b9396f77a958295ad18ee7
 
 # jq parses the config list, wget (busybox) posts the Apprise alert. ca-certificates for the Proton API.
 RUN apk add --no-cache jq ca-certificates tzdata

@@ -93,10 +93,12 @@ jobs:
           # candidate was never reached. Every attempt is capped, and the cap is
           # also clamped to what is left of the run so the last attempt cannot
           # start work it has no time to finish. The successful attempt of run
-          # 34332807927 took 14m35s, so 25 minutes is a hang, not a slow model.
-          # SIGTERM first, SIGKILL ten seconds later, since the write pattern of
-          # openwiki/.run.json is not ours to assume.
-          ATTEMPT_MAX=${ATTEMPT_MAX:-1500}
+          # 34332807927 took 14m35s on a small repository, but Laguna on a large
+          # one was killed twice at 25 minutes while still working (run
+          # 40757332834), so the cap is an hour. SIGTERM first, SIGKILL ten
+          # seconds later, since the write pattern of openwiki/.run.json is not
+          # ours to assume.
+          ATTEMPT_MAX=${ATTEMPT_MAX:-3600}
           # Below the step's own 60 minutes, so the loop reports which candidate
           # ran out of budget instead of being killed mid-sentence.
           budget_end=$(( $(date -u +%s) + ${STEP_BUDGET_SECONDS:-21300} ))
@@ -255,6 +257,24 @@ jobs:
           LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
           LANGCHAIN_PROJECT: openwiki
           LANGCHAIN_TRACING_V2: "true"
+
+      - name: Require a documented update
+        # A green run is not a documented update. Runs 34217074531 and
+        # 34342504305 ended green and opened pull requests holding only
+        # openwiki/.run.json and a .last-update.json reading "interrupted".
+        # Fail the job instead of opening such a pull request.
+        run: |
+          if ! grep -q '"status": *"complete"' openwiki/.last-update.json 2>/dev/null; then
+            echo "openwiki/.last-update.json is not \"complete\"; the update is interrupted." >&2
+            exit 1
+          fi
+          documented=$(git status --porcelain --untracked-files=all -- openwiki | cut -c4- | grep -vxE 'openwiki/\.(run|last-update)\.json' || true)
+          if [ -z "$documented" ]; then
+            echo "The update changed nothing but openwiki/.run.json and openwiki/.last-update.json; failing the run." >&2
+            exit 1
+          fi
+          echo "Documented changes:"
+          echo "$documented"
 
       - name: Create OpenWiki update pull request
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8

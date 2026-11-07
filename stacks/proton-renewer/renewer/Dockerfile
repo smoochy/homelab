@@ -17,9 +17,6 @@ RUN apk add --no-cache jq ca-certificates tzdata
 COPY --from=build /protonvpn-wg /usr/local/bin/protonvpn-wg
 COPY renewer.sh /usr/local/bin/renewer.sh
 
-# Marker only: it changes when the build context changes, so the content of this image is recorded in compose.yaml (see docs/image-pinning.md).
-ARG SRC_REV
-
 # The confgen session file lives under $HOME, so $HOME is the volume.
 ENV HOME=/data
 WORKDIR /data

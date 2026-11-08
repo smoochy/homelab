@@ -119,7 +119,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: golift/notifiarr:v0.9.7@sha256:2b0a8784d8a43177cbc5a19110e7eb066d9321572c3352eda79c0a89898c7735
+    image: golift/notifiarr:v0.10.0@sha256:b10846c169a5cc09eb16b920fc4a6688e003bf30ca245aaa5292b50e8cb99782
     networks:
       smoonet:
     ports:

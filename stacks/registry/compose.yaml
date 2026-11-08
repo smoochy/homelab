@@ -24,7 +24,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: registry:3.1.2@sha256:88604dfe2f457935aafbb96755d0511e8216eb1b8df6b94329d530706eb8b906
+    image: registry:3.1.2@sha256:38907510915c3f1604c7e83d6ab602ab3020d092f73bdaed8696773693ff768c
     networks:
       smoonet:
     ports:

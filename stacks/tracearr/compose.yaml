@@ -15,7 +15,7 @@ services:
       start_period: 60s
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/health || exit 1"]
       timeout: 10s
-    image: ghcr.io/connorgallopo/tracearr:supervised-3.1.5@sha256:5618957cfc80961a2fecd35e31f2d9be7f262725975f36c24949110262ba97a0
+    image: ghcr.io/connorgallopo/tracearr:supervised-3.1.7@sha256:d904e5c3274ad076f8993739f26abcbbd39f9b48c7447aaff115b1dc68378e6a
     mem_limit: ${TRACEARR_MEM_LIMIT}
     networks:
       - smoonet

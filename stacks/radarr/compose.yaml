@@ -24,7 +24,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/linuxserver/radarr:6.4.4.10685-ls325@sha256:ade5937813c6ae415b29db729386e53fea3ecf067a019849bafbe2d2a6ec02ba
+    image: ghcr.io/linuxserver/radarr:6.4.4.10685-ls326@sha256:51a9ac2a9eb47afc833541e5fd6c11b86eb9f810694c22fa2429e3078e9194b2
     # Network configuration. The address is pinned because the upload lane runs inside the
     # qBittorrent stack's VPN namespace, whose resolver is the tunnel's, so Docker DNS
     # never resolves "radarr" there and the media server URL has to be a literal IP.

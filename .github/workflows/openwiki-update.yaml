@@ -45,7 +45,10 @@ jobs:
                        | select(.id != "nvidia/nemotron-3.5-lightning:free")
                        | select(.id != "cohere/north-mini-code:free")]
                       | sort_by(.id != "poolside/laguna-s-2.1:free")
-                      | map(.id) | join(" ")')
+                      | map(.id)
+                      | if index("poolside/laguna-s-2.1:free") == null
+                        then ["poolside/laguna-s-2.1:free"] + . else . end
+                      | join(" ")')
           if [ -z "$MODELS" ]; then
             echo "No usable sanity_ok model in models-openwiki.json" >&2
             exit 1

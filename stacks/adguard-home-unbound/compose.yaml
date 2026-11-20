@@ -103,7 +103,7 @@ services:
       - net.unraid.docker.webui=${ADGUARD_HOME_SYNC_UNRAID_WEBGUI_URL}
   adguard-home-unbound:
     container_name: adguard-home-unbound
-    image: ghcr.io/mainfrezzer/adguardhome:v0.107.80@sha256:9ae91be68947c42727d733a59c457765d8501dddbc17ba9d36c24d163d9c5a1e
+    image: ghcr.io/mainfrezzer/adguardhome:v1.0.0@sha256:8b46e90ea98afc309af5571f292c60fd1b29ffe48cca6e25d2c9d32288770eba
     restart: unless-stopped
 
     # Network config (macvlan/br0 mit fester IP)

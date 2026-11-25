@@ -107,7 +107,7 @@ services:
   # Compose does not hash the config content itself (#1738).
   vmalert:
     container_name: vmalert
-    image: victoriametrics/vmalert:v1.156.0@sha256:4fea7d1a888d4db4ff18804434ef0f3ca8eb6482e289c50d32001c2db218287c
+    image: victoriametrics/vmalert:v1.157.0@sha256:c550cfc345a1f3e130a3c78b3f5a910122448c66b3008d9a29eaa0559e9a23dd
     restart: unless-stopped
     depends_on:
       - victorialogs

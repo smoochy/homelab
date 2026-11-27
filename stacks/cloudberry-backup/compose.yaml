@@ -55,7 +55,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: jlesage/cloudberry-backup:v26.09.1@sha256:768a5dbb2b3d3611ab809acd8e212d513ffdaf75497bfe292aa2f36f0c417319
+    image: jlesage/cloudberry-backup:v26.11.1@sha256:5f9f6bb7a333dcdf6c7b1df228ccf6c984861cae87254b6a580e32ceb62236aa
     networks:
       smoonet:
     ports:

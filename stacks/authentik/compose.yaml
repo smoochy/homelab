@@ -45,7 +45,7 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
-    image: ghcr.io/goauthentik/server:2026.8.7@sha256:5cee18c7a4304d0d8df1419be0dfe38738538d1fc40b0b38156fa29573346a20
+    image: ghcr.io/goauthentik/server:2026.8.7@sha256:1675a017c46ba7f4f15333aeafeeb64538c581673bcbcd36af872cdf7de4e7f7
     networks:
       - authentik
       - smoonet
@@ -111,7 +111,7 @@ services:
     # belong to postgresql and the server, and a probe against those would answer green
     # for something other than the worker. Its liveness is covered by the stack-health
     # poller instead.
-    image: ghcr.io/goauthentik/server:2026.8.7@sha256:5cee18c7a4304d0d8df1419be0dfe38738538d1fc40b0b38156fa29573346a20
+    image: ghcr.io/goauthentik/server:2026.8.7@sha256:1675a017c46ba7f4f15333aeafeeb64538c581673bcbcd36af872cdf7de4e7f7
     networks:
       - authentik
       - smoonet
